@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FilmMatch - Найди свой фильм</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #0088cc;
+            --secondary-color: #f8f9fa;
+            --accent-color: #ff6b6b;
+            --text-color: #212529;
+            --light-text: #6c757d;
+            --bg-color: #ffffff;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 100%;
+            width: 100%;
+            padding: 0;
+            margin: 0 auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            position: relative;
+            z-index: 10;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-weight: bold;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo i {
+            margin-right: 10px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .nav-button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--accent-color);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .view {
+            width: 100%;
+            max-width: 500px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .view.active {
+            display: flex;
+        }
+
+        /* Карточка фильма */
+        .film-card {
+            background-color: var(--bg-color);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 400px;
+            position: relative;
+            margin-bottom: 30px;
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease;
+        }
+
+        .film-poster {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }
+
+        .film-info {
+            padding: 20px;
+        }
+
+        .film-title {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+
+        .film-year {
+            color: var(--light-text);
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .film-slogan {
+            font-style: italic;
+            color: var(--light-text);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .film-description {
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .film-actions {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0;
+        }
+
+        .action-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background-color: white;
+            box-shadow: var(--shadow);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dislike-btn {
+            color: #ff6b6b;
+        }
+
+        .like-btn {
+            color: #4ecdc4;
+        }
+
+        .action-button:hover {
+            transform: scale(1.1);
+        }
+
+        .action-button:active {
+            transform: scale(0.95);
+        }
+
+        /* Список избранных */
+        .favorites-list {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .favorite-item {
+            background-color: var(--bg-color);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .favorite-item:hover {
+            transform: translateY(-3px);
+        }
+
+        .favorite-poster {
+            width: 60px;
+            height: 90px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 15px;
+        }
+
+        .favorite-info {
+            flex: 1;
+        }
+
+        .favorite-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .favorite-year {
+            color: var(--light-text);
+            font-size: 0.8rem;
+        }
+
+        .remove-btn {
+            background: none;
+            border: none;
+            color: var(--accent-color);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        /* Поиск совпадений */
+        .match-search {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            font-size: 1rem;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border 0.3s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .search-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .search-btn:hover {
+            background-color: #0077b3;
+            transform: translateY(-2px);
+        }
+
+        .matches-list {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        /* Анимации */
+        @keyframes swipeRight {
+            0% {
+                transform: translateX(0) rotate(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(200px) rotate(20deg);
+                opacity: 0;
+            }
+        }
+
+        @keyframes swipeLeft {
+            0% {
+                transform: translateX(0) rotate(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(-200px) rotate(-20deg);
+                opacity: 0;
+            }
+        }
+
+        .swipe-right {
+            animation: swipeRight 0.5s forwards;
+        }
+
+        .swipe-left {
+            animation: swipeLeft 0.5s forwards;
+        }
+
+        /* Пустое состояние */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--light-text);
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #ddd;
+        }
+
+        /* Модальное окно */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--bg-color);
+            border-radius: 15px;
+            padding: 20px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--light-text);
+        }
+
+        .modal-title {
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            text-align: center;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 500px) {
+            .film-poster {
+                height: 250px;
+            }
+            
+            .action-button {
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+        }
+
+        /* Индикатор загрузки */
+        .loader {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-film"></i>
+                    <span>FilmMatch</span>
+                </div>
+                <div class="nav-buttons">
+                    <button class="nav-button" id="swipeBtn">
+                        <i class="fas fa-fire"></i>
+                    </button>
+                    <button class="nav-button" id="favoritesBtn">
+                        <i class="fas fa-heart"></i>
+                        <span class="badge" id="favoritesCount">0</span>
+                    </button>
+                    <button class="nav-button" id="matchesBtn">
+                        <i class="fas fa-user-friends"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Главный экран - свайп фильмов -->
+            <div class="view active" id="swipeView">
+                <div class="film-card" id="currentFilm">
+                    <img src="https://via.placeholder.com/400x300?text=Film+Poster" alt="Film Poster" class="film-poster">
+                    <div class="film-info">
+                        <h2 class="film-title">Название фильма</h2>
+                        <div class="film-year">2023</div>
+                        <p class="film-slogan">Захватывающий слоган фильма</p>
+                        <p class="film-description">Описание фильма будет здесь. Это краткое описание сюжета и основных моментов фильма, которые могут заинтересовать зрителя.</p>
+                    </div>
+                    <div class="film-actions">
+                        <button class="action-button dislike-btn" id="dislikeBtn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <button class="action-button like-btn" id="likeBtn">
+                            <i class="fas fa-heart"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="loader" id="swipeLoader"></div>
+                <div class="empty-state" id="noFilms" style="display: none;">
+                    <div class="empty-icon">
+                        <i class="fas fa-film"></i>
+                    </div>
+                    <h3>Фильмы закончились!</h3>
+                    <p>Вы просмотрели все доступные фильмы. Попробуйте позже или измените настройки.</p>
+                </div>
+            </div>
+
+            <!-- Избранные фильмы -->
+            <div class="view" id="favoritesView">
+                <h2 style="margin-bottom: 20px; width: 100%; max-width: 400px;">Мои фильмы</h2>
+                <div class="favorites-list" id="favoritesList">
+                    <!-- Пример элемента избранного -->
+                    <div class="favorite-item">
+                        <img src="https://via.placeholder.com/60x90?text=Poster" alt="Poster" class="favorite-poster">
+                        <div class="favorite-info">
+                            <div class="favorite-title">Интерстеллар</div>
+                            <div class="favorite-year">2014</div>
+                        </div>
+                        <button class="remove-btn">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="empty-state" id="noFavorites" style="display: none;">
+                    <div class="empty-icon">
+                        <i class="fas fa-heart-broken"></i>
+                    </div>
+                    <h3>Список пуст</h3>
+                    <p>Здесь будут отображаться фильмы, которые вам понравились. Начните свайпать!</p>
+                </div>
+            </div>
+
+            <!-- Поиск совпадений -->
+            <div class="view" id="matchesView">
+                <h2 style="margin-bottom: 20px;">Совпадения</h2>
+                <div class="match-search">
+                    <input type="text" class="search-input" id="userIdInput" placeholder="Введите ID пользователя">
+                    <button class="search-btn" id="searchMatchesBtn">Найти совпадения</button>
+                </div>
+                <div class="matches-list" id="matchesList">
+                    <!-- Здесь будут отображаться совпадения -->
+                </div>
+                <div class="loader" id="matchesLoader" style="display: none;"></div>
+                <div class="empty-state" id="noMatches" style="display: none;">
+                    <div class="empty-icon">
+                        <i class="fas fa-user-friends"></i>
+                    </div>
+                    <h3>Нет совпадений</h3>
+                    <p>Введите ID пользователя, чтобы найти общие фильмы, которые понравились вам обоим.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Модальное окно для совпадений -->
+    <div class="modal" id="matchModal">
+        <div class="modal-content">
+            <button class="close-modal" id="closeModal">&times;</button>
+            <h3 class="modal-title">У вас есть совпадение!</h3>
+            <p>Вы и пользователь <strong id="matchedUserName">Иван</strong> оба хотите посмотреть:</p>
+            <div class="favorite-item" style="margin: 15px 0;">
+                <img src="https://via.placeholder.com/60x90?text=Poster" alt="Poster" class="favorite-poster">
+                <div class="favorite-info">
+                    <div class="favorite-title">Начало</div>
+                    <div class="favorite-year">2010</div>
+                </div>
+            </div>
+            <button class="search-btn" style="width: 100%;" id="viewAllMatchesBtn">Посмотреть все совпадения</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Элементы интерфейса
+            const swipeView = document.getElementById('swipeView');
+            const favoritesView = document.getElementById('favoritesView');
+            const matchesView = document.getElementById('matchesView');
+            const swipeBtn = document.getElementById('swipeBtn');
+            const favoritesBtn = document.getElementById('favoritesBtn');
+            const matchesBtn = document.getElementById('matchesBtn');
+            const currentFilm = document.getElementById('currentFilm');
+            const likeBtn = document.getElementById('likeBtn');
+            const dislikeBtn = document.getElementById('dislikeBtn');
+            const favoritesList = document.getElementById('favoritesList');
+            const favoritesCount = document.getElementById('favoritesCount');
+            const userIdInput = document.getElementById('userIdInput');
+            const searchMatchesBtn = document.getElementById('searchMatchesBtn');
+            const matchesList = document.getElementById('matchesList');
+            const matchModal = document.getElementById('matchModal');
+            const closeModal = document.getElementById('closeModal');
+            const viewAllMatchesBtn = document.getElementById('viewAllMatchesBtn');
+            const swipeLoader = document.getElementById('swipeLoader');
+            const matchesLoader = document.getElementById('matchesLoader');
+            const noFilms = document.getElementById('noFilms');
+            const noFavorites = document.getElementById('noFavorites');
+            const noMatches = document.getElementById('noMatches');
+
+            // Переменные состояния
+            let currentFilmData = null;
+            let favorites = [];
+            let matches = [];
+            let films = [];
+            let startX, startY, moveX, moveY;
+            let isDragging = false;
+
+            // Инициализация приложения
+            init();
+
+            // Функция инициализации
+            function init() {
+                // Загрузка тестовых данных
+                loadSampleFilms();
+                
+                // Показать первый фильм
+                showNextFilm();
+                
+                // Загрузка избранного из localStorage
+                loadFavorites();
+                
+                // Настройка обработчиков событий
+                setupEventListeners();
+            }
+
+            // Загрузка тестовых данных
+            function loadSampleFilms() {
+                films = [
+                    {
+                        id: 1,
+                        title: "Интерстеллар",
+                        year: 2014,
+                        slogan: "Следующее поколение отправится дальше",
+                        description: "Фильм рассказывает о путешествиях группы исследователей, которые используют недавно обнаруженный пространственно-временной тоннель, чтобы обойти ограничения космических полетов человека и покорить огромные расстояния на межзвездном космическом корабле.",
+                        poster: "https://m.media-amazon.com/images/M/MV5BZjdkOTU3MDktN2IxOS00OGEyLWFmMjktY2FiMmZkNWIyODZiXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_.jpg"
+                    },
+                    {
+                        id: 2,
+                        title: "Начало",
+                        year: 2010,
+                        slogan: "Твой разум — место преступления",
+                        description: "Кобб — талантливый вор, лучший из лучших в опасном искусстве извлечения: он крадет ценные секреты из глубин подсознания во время сна, когда человеческий разум наиболее уязвим.",
+                        poster: "https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_.jpg"
+                    },
+                    {
+                        id: 3,
+                        title: "Побег из Шоушенка",
+                        year: 1994,
+                        slogan: "Страх может сдержать тебя, надежда может освободить",
+                        description: "Два заключенных заводят дружбу, находя утешение и возможное искупление через акты простой человеческой доброты.",
+                        poster: "https://m.media-amazon.com/images/M/MV5BNDE3ODcxYzMtY2YzZC00NmNlLWJiNDMtZDViZWM2MzIxZDYwXkEyXkFqcGdeQXVyNjAwNDUxODI@._V1_.jpg"
+                    },
+                    {
+                        id: 4,
+                        title: "Форрест Гамп",
+                        year: 1994,
+                        slogan: "Мир никогда не будет прежним после того, как вы увидите его глазами Форреста Гампа",
+                        description: "История жизни Форреста Гампа, добродушного и простодушного человека, который, несмотря на свою низкую IQ, переживает невероятные события, влияющие на историю США.",
+                        poster: "https://m.media-amazon.com/images/M/MV5BNWIwODRlZTUtY2U3ZS00Yzg1LWJhNzYtMmZiYmEyNmU1NjMzXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_.jpg"
+                    },
+                    {
+                        id: 5,
+                        title: "Крестный отец",
+                        year: 1972,
+                        slogan: "Предложение, от которого нельзя отказаться",
+                        description: "Стареющий патриарх организованной преступной династии передает контроль над своим подпольным империей своему неохотному сыну.",
+                        poster: "https://m.media-amazon.com/images/M/MV5BM2MyNjYxNmUtYTAwNi00MTYxLWJmNWYtYzZlODY3ZTk3OTFlXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_.jpg"
+                    }
+                ];
+            }
+
+            // Загрузка избранного из localStorage
+            function loadFavorites() {
+                const savedFavorites = localStorage.getItem('filmMatchFavorites');
+                if (savedFavorites) {
+                    favorites = JSON.parse(savedFavorites);
+                    updateFavoritesUI();
+                }
+            }
+
+            // Сохранение избранного в localStorage
+            function saveFavorites() {
+                localStorage.setItem('filmMatchFavorites', JSON.stringify(favorites));
+            }
+
+            // Настройка обработчиков событий
+            function setupEventListeners() {
+                // Переключение между вкладками
+                swipeBtn.addEventListener('click', () => switchView('swipe'));
+                favoritesBtn.addEventListener('click', () => switchView('favorites'));
+                matchesBtn.addEventListener('click', () => switchView('matches'));
+
+                // Кнопки лайка/дизлайка
+                likeBtn.addEventListener('click', likeFilm);
+                dislikeBtn.addEventListener('click', dislikeFilm);
+
+                // Поиск совпадений
+                searchMatchesBtn.addEventListener('click', searchMatches);
+                viewAllMatchesBtn.addEventListener('click', () => {
+                    matchModal.style.display = 'none';
+                    switchView('matches');
+                });
+
+                // Закрытие модального окна
+                closeModal.addEventListener('click', () => {
+                    matchModal.style.display = 'none';
+                });
+
+                // Обработка свайпов на мобильных устройствах
+                currentFilm.addEventListener('touchstart', handleTouchStart, false);
+                currentFilm.addEventListener('touchmove', handleTouchMove, false);
+                currentFilm.addEventListener('touchend', handleTouchEnd, false);
+
+                // Обработка перетаскивания мышкой для десктопов
+                currentFilm.addEventListener('mousedown', handleMouseDown, false);
+                document.addEventListener('mousemove', handleMouseMove, false);
+                document.addEventListener('mouseup', handleMouseUp, false);
+            }
+
+            // Переключение между вкладками
+            function switchView(view) {
+                swipeView.classList.remove('active');
+                favoritesView.classList.remove('active');
+                matchesView.classList.remove('active');
+
+                if (view === 'swipe') {
+                    swipeView.classList.add('active');
+                } else if (view === 'favorites') {
+                    favoritesView.classList.add('active');
+                } else if (view === 'matches') {
+                    matchesView.classList.add('active');
+                }
+            }
+
+            // Показать следующий фильм
+            function showNextFilm() {
+                // Фильтруем фильмы, которые еще не были оценены
+                const unratedFilms = films.filter(film => 
+                    !favorites.some(fav => fav.id === film.id) && 
+                    film.id !== (currentFilmData ? currentFilmData.id : null)
+                );
+
+                if (unratedFilms.length === 0) {
+                    currentFilm.style.display = 'none';
+                    noFilms.style.display = 'block';
+                    return;
+                }
+
+                noFilms.style.display = 'none';
+                currentFilm.style.display = 'block';
+
+                // Выбираем случайный фильм из оставшихся
+                const randomIndex = Math.floor(Math.random() * unratedFilms.length);
+                currentFilmData = unratedFilms[randomIndex];
+
+                // Обновляем UI
+                document.querySelector('.film-poster').src = currentFilmData.poster;
+                document.querySelector('.film-title').textContent = currentFilmData.title;
+                document.querySelector('.film-year').textContent = currentFilmData.year;
+                document.querySelector('.film-slogan').textContent = currentFilmData.slogan;
+                document.querySelector('.film-description').textContent = currentFilmData.description;
+            }
+
+            // Обработка лайка фильма
+            function likeFilm() {
+                if (!currentFilmData) return;
+
+                // Добавляем в избранное
+                favorites.push(currentFilmData);
+                saveFavorites();
+                updateFavoritesUI();
+
+                // Анимация свайпа вправо
+                currentFilm.classList.add('swipe-right');
+
+                // Показываем следующий фильм после анимации
+                setTimeout(() => {
+                    currentFilm.classList.remove('swipe-right');
+                    showNextFilm();
+                    
+                    // Проверяем совпадения (имитация)
+                    if (Math.random() > 0.7) {
+                        showMatchModal();
+                    }
+                }, 500);
+            }
+
+            // Обработка дизлайка фильма
+            function dislikeFilm() {
+                if (!currentFilmData) return;
+
+                // Анимация свайпа влево
+                currentFilm.classList.add('swipe-left');
+
+                // Показываем следующий фильм после анимации
+                setTimeout(() => {
+                    currentFilm.classList.remove('swipe-left');
+                    showNextFilm();
+                }, 500);
+            }
+
+            // Обновление UI списка избранного
+            function updateFavoritesUI() {
+                favoritesList.innerHTML = '';
+                favoritesCount.textContent = favorites.length;
+
+                if (favorites.length === 0) {
+                    noFavorites.style.display = 'block';
+                    return;
+                }
+
+                noFavorites.style.display = 'none';
+
+                favorites.forEach(film => {
+                    const favoriteItem = document.createElement('div');
+                    favoriteItem.className = 'favorite-item';
+                    favoriteItem.innerHTML = `
+                        <img src="${film.poster}" alt="${film.title}" class="favorite-poster">
+                        <div class="favorite-info">
+                            <div class="favorite-title">${film.title}</div>
+                            <div class="favorite-year">${film.year}</div>
+                        </div>
+                        <button class="remove-btn">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
+                    
+                    // Добавляем обработчик удаления
+                    const removeBtn = favoriteItem.querySelector('.remove-btn');
+                    removeBtn.addEventListener('click', () => removeFavorite(film.id));
+                    
+                    favoritesList.appendChild(favoriteItem);
+                });
+            }
+
+            // Удаление из избранного
+            function removeFavorite(filmId) {
+                favorites = favorites.filter(film => film.id !== filmId);
+                saveFavorites();
+                updateFavoritesUI();
+            }
+
+            // Поиск совпадений с другим пользователем
+            function searchMatches() {
+                const userId = userIdInput.value.trim();
+                
+                if (!userId) {
+                    alert('Пожалуйста, введите ID пользователя');
+                    return;
+                }
+
+                // Показываем индикатор загрузки
+                matchesLoader.style.display = 'block';
+                matchesList.innerHTML = '';
+                noMatches.style.display = 'none';
+
+                // Имитация запроса к серверу
+                setTimeout(() => {
+                    // Здесь должна быть реальная логика поиска совпадений
+                    // Для демонстрации используем случайные фильмы из избранного
+                    const matchedFilms = getRandomMatches();
+                    
+                    matchesLoader.style.display = 'none';
+                    
+                    if (matchedFilms.length === 0) {
+                        noMatches.style.display = 'block';
+                        return;
+                    }
+                    
+                    // Отображаем совпадения
+                    matchedFilms.forEach(film => {
+                        const matchItem = document.createElement('div');
+                        matchItem.className = 'favorite-item';
+                        matchItem.innerHTML = `
+                            <img src="${film.poster}" alt="${film.title}" class="favorite-poster">
+                            <div class="favorite-info">
+                                <div class="favorite-title">${film.title}</div>
+                                <div class="favorite-year">${film.year}</div>
+                            </div>
+                        `;
+                        matchesList.appendChild(matchItem);
+                    });
+                }, 1500);
+            }
+
+            // Имитация поиска совпадений (для демонстрации)
+            function getRandomMatches() {
+                if (favorites.length === 0) return [];
+                
+                // Возвращаем 1-3 случайных фильма из избранного
+                const count = Math.min(3, Math.max(1, Math.floor(Math.random() * favorites.length)));
+                const shuffled = [...favorites].sort(() => 0.5 - Math.random());
+                return shuffled.slice(0, count);
+            }
+
+            // Показ модального окна с совпадением
+            function showMatchModal() {
+                if (favorites.length === 0) return;
+                
+                // Выбираем случайный фильм из избранного
+                const randomIndex = Math.floor(Math.random() * favorites.length);
+                const matchedFilm = favorites[randomIndex];
+                
+                // Обновляем модальное окно
+                document.getElementById('matchedUserName').textContent = 'Иван'; // Здесь должно быть имя реального пользователя
+                
+                const matchItem = document.querySelector('#matchModal .favorite-item');
+                matchItem.innerHTML = `
+                    <img src="${matchedFilm.poster}" alt="${matchedFilm.title}" class="favorite-poster">
+                    <div class="favorite-info">
+                        <div class="favorite-title">${matchedFilm.title}</div>
+                        <div class="favorite-year">${matchedFilm.year}</div>
+                    </div>
+                `;
+                
+                // Показываем модальное окно
+                matchModal.style.display = 'flex';
+            }
+
+            // Обработчики для свайпов на мобильных устройствах
+            function handleTouchStart(e) {
+                const touch = e.touches[0];
+                startX = touch.clientX;
+                startY = touch.clientY;
+                isDragging = true;
+            }
+
+            function handleTouchMove(e) {
+                if (!isDragging) return;
+                
+                const touch = e.touches[0];
+                moveX = touch.clientX - startX;
+                moveY = touch.clientY - startY;
+                
+                // Только горизонтальное перемещение
+                if (Math.abs(moveX) > Math.abs(moveY)) {
+                    e.preventDefault();
+                    currentFilm.style.transform = `translateX(${moveX}px) rotate(${moveX / 20}deg)`;
+                }
+            }
+
+            function handleTouchEnd() {
+                if (!isDragging) return;
+                isDragging = false;
+                
+                // Определяем, был ли это свайп
+                if (Math.abs(moveX) > 100) {
+                    if (moveX > 0) {
+                        likeFilm();
+                    } else {
+                        dislikeFilm();
+                    }
+                } else {
+                    // Возвращаем карточку на место
+                    currentFilm.style.transform = 'none';
+                }
+            }
+
+            // Обработчики для перетаскивания мышкой
+            function handleMouseDown(e) {
+                startX = e.clientX;
+                startY = e.clientY;
+                isDragging = true;
+                document.body.style.cursor = 'grabbing';
+            }
+
+            function handleMouseMove(e) {
+                if (!isDragging) return;
+                
+                moveX = e.clientX - startX;
+                moveY = e.clientY - startY;
+                
+                // Только горизонтальное перемещение
+                if (Math.abs(moveX) > Math.abs(moveY)) {
+                    currentFilm.style.transform = `translateX(${moveX}px) rotate(${moveX / 20}deg)`;
+                }
+            }
+
+            function handleMouseUp() {
+                if (!isDragging) return;
+                isDragging = false;
+                document.body.style.cursor = '';
+                
+                // Определяем, был ли это свайп
+                if (Math.abs(moveX) > 100) {
+                    if (moveX > 0) {
+                        likeFilm();
+                    } else {
+                        dislikeFilm();
+                    }
+                } else {
+                    // Возвращаем карточку на место
+                    currentFilm.style.transform = 'none';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
