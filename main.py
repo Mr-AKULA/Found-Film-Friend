@@ -54,7 +54,28 @@ def def_check_birthday(user_id):
     
 
 #FIXME Добавить функцию отправки фильма
+# def get_random_movie(user_id, film=None):
+#     if film is None:
+#         conn = sqlite3.connect('movies.db')
+#         conn.create_function("POWER", 2, power)
+#         cursor = conn.cursor()
+#         cursor.execute(get_random_movie_query(), (user_id, user_id))
+#         movie = cursor.fetchone()
+#         conn.close()
+#         return movie, movie[0] if movie else (None, None)
+#     else:
+#         conn = sqlite3.connect('movies.db')
+#         cursor = conn.cursor()
+#         cursor.execute(get_specific_movie(), (film,))
+#         movie = cursor.fetchone()
+#         conn.close()
+#         return movie, movie[0] if movie else (None, None)
+        
 def get_random_movie(user_id, film=None):
+    def clean_none(value):
+        """Заменяет None на пустую строку"""
+        return value if value is not None else ""
+    
     if film is None:
         conn = sqlite3.connect('movies.db')
         conn.create_function("POWER", 2, power)
@@ -62,15 +83,24 @@ def get_random_movie(user_id, film=None):
         cursor.execute(get_random_movie_query(), (user_id, user_id))
         movie = cursor.fetchone()
         conn.close()
-        return movie, movie[0] if movie else (None, None)
+        
+        if movie:
+            # Очищаем все None значения в кортеже
+            cleaned_movie = tuple(clean_none(value) for value in movie)
+            return cleaned_movie, cleaned_movie[0]
+        return tuple([""]*6), ""  # Возвращаем пустой кортеж и пустую строку
+    
     else:
         conn = sqlite3.connect('movies.db')
         cursor = conn.cursor()
         cursor.execute(get_specific_movie(), (film,))
         movie = cursor.fetchone()
         conn.close()
-        return movie, movie[0] if movie else (None, None)
         
+        if movie:
+            cleaned_movie = tuple(clean_none(value) for value in movie)
+            return cleaned_movie, cleaned_movie[0]
+        return tuple([""]*6), ""
 
 def get_posters_movie(movie_id):
     conn = sqlite3.connect('movies.db')
