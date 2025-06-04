@@ -6,7 +6,9 @@ import Settings
 from use_def import * 
 import random
 import math
+import sys
 
+from Settings import *
 from sql_queries import *  # Импортируем все SQL-запросы
 
 API_TOKEN = Settings.token
@@ -14,7 +16,6 @@ API_TOKEN = Settings.token
 bot = telebot.TeleBot(API_TOKEN)
 
 #TODO Сделать выбор фильмов на основе приоритетов
-#TODO Сделать ввод даты рождения
 #TODO Сделать список друзей(с возвожностью добавлять удалять)
 #TODO Сделать списки фильмов с проверкой необходимости их отображения. Также сделать БД к информации у кого какие списки.
 #TODO Сделать возможность поделиться фильмом (Ставя лайк или дизлайк)
@@ -23,15 +24,22 @@ bot = telebot.TeleBot(API_TOKEN)
 #TODO Логика переключения между выбором и просмотром фильмов.
 #TODO Сделать возможность выбора человека (группы людей) для совместного просмотра фильма.
 #TODO Вывод списка мест, где можно посмотреть фильм.
-#TODO Если у пользователя закончились фильмы, то пользователю приходит уведомление об отсутствии фильмов. Нам приходит уведомление об отсутствии фильмов. 
+##TODO Если у пользователя закончились фильмы, то пользователю приходит уведомление об отсутствии фильмов. Нам приходит уведомление об отсутствии фильмов. 
 
-#TODO Все SQL - запросы в отдельном файле.  ГОТОВО
 
 # Инициализация бота
 bot = telebot.TeleBot(API_TOKEN)
 
 def power(x, y):
     return math.pow(x, y)
+
+def update_last_activity(user_id):
+    conn = sqlite3.connect('movies.db')
+    cursor = conn.cursor()
+    cursor.execute(update_last_activity_user(),
+                   (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), user_id))
+    conn.commit()
+    conn.close()
 
 
 def def_find_date_of_birth(message, send_message):
@@ -53,27 +61,8 @@ def def_check_birthday(user_id):
         return False
     
 
-#FIXME Добавить функцию отправки фильма
-# def get_random_movie(user_id, film=None):
-#     if film is None:
-#         conn = sqlite3.connect('movies.db')
-#         conn.create_function("POWER", 2, power)
-#         cursor = conn.cursor()
-#         cursor.execute(get_random_movie_query(), (user_id, user_id))
-#         movie = cursor.fetchone()
-#         conn.close()
-#         return movie, movie[0] if movie else (None, None)
-#     else:
-#         conn = sqlite3.connect('movies.db')
-#         cursor = conn.cursor()
-#         cursor.execute(get_specific_movie(), (film,))
-#         movie = cursor.fetchone()
-#         conn.close()
-#         return movie, movie[0] if movie else (None, None)
-        
 def get_random_movie(user_id, film=None):
     def clean_none(value):
-        """Заменяет None на пустую строку"""
         return value if value is not None else ""
     
     if film is None:
@@ -82,14 +71,19 @@ def get_random_movie(user_id, film=None):
         cursor = conn.cursor()
         cursor.execute(get_random_movie_query(), (user_id, user_id))
         movie = cursor.fetchone()
+        
+        # Проверка количества доступных фильмов
+        cursor.execute(count_available_movies(), (user_id, user_id))
+        remaining_movies = cursor.fetchone()[0]
         conn.close()
         
+        if remaining_movies == 0:
+            return None, "no_movies"
+            
         if movie:
-            # Очищаем все None значения в кортеже
             cleaned_movie = tuple(clean_none(value) for value in movie)
             return cleaned_movie, cleaned_movie[0]
-        return tuple([""]*6), ""  # Возвращаем пустой кортеж и пустую строку
-    
+        return tuple([""]*6), ""
     else:
         conn = sqlite3.connect('movies.db')
         cursor = conn.cursor()
@@ -110,10 +104,44 @@ def get_posters_movie(movie_id):
     conn.close()
     return poster[0] if poster else None
 
+# Вспомогательная функция для получения информации о пользователе
+def get_user_info(user_id):
+    conn = sqlite3.connect(Settings.file_bd)
+    cursor = conn.cursor()
+    cursor.execute(get_user_name(), (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result:
+        name, username = result
+        return f"{name} (@{username})" if username else name
+    return f"ID: {user_id}"
+
+
+# Новая функция для уведомления админов
+def notify_admins_no_movies(user_id):
+    user_info = get_user_info(user_id)  # Нужно реализовать эту функцию
+    message = f"⚠️ У пользователя {user_info} закончились фильмы для оценки!"
+    
+    for admin_id in ADMIN_IDS:
+        try:
+            bot.send_message(admin_id, message)
+        except Exception as e:
+            print(f"Не удалось отправить уведомление админу {admin_id}: {e}")
+
 
 def send_random_movie(message):
     user_id = message.from_user.id
     movie, movie_id = get_random_movie(user_id)
+
+    if movie_id == "no_movies":
+        # Уведомление пользователя
+        bot.send_message(message.chat.id, "К сожалению, у нас закончились фильмы для вас. Мы уже работаем над добавлением новых!")
+        
+        # Уведомление администраторов
+        notify_admins_no_movies(user_id)
+        return
+
     if movie:
         title, tagline, description, release_year = movie[1], movie[2], movie[3], movie[4]
         preview_url = get_posters_movie(movie_id)
@@ -188,6 +216,50 @@ def def_process_birth_date(message):
         bot.reply_to(message, "Некорректный формат даты рождения. Пожалуйста, укажите дату рождения в формате ДД.ММ.ГГГГ.")
         bot.register_next_step_handler(message, def_process_birth_date)
 
+@bot.message_handler(func=lambda message: message.text in ['👎', '👍'])
+def movie_rating_handler(message):
+    user = message.from_user
+    update_last_activity(user.id)  # Обновляем дату последней активности
+    user_id = user.id
+    # Сохраняем оценку в базе данных
+    conn = sqlite3.connect('movies.db')
+    cursor = conn.cursor()
+
+    # Извлекаем preview_url по movie_id
+    cursor.execute(get_pending_actions(), (user_id,))
+    actions = cursor.fetchall()
+    conn.commit()
+    conn.close()
+
+    if actions:
+        # Извлекаем первую запись из actions
+        action = actions[0]
+        user_id, movie_id, _, _ = action
+
+
+        if message.text == '👎':
+            # bot.reply_to(message, "Вы поставили отрицательную оценку.")
+            want_to_watch = 0
+        elif message.text == '👍':
+            # bot.reply_to(message, "Вы поставили положительную оценку.")
+            want_to_watch = 1
+
+        # Сохраняем оценку в базе данных
+        conn = sqlite3.connect('movies.db')
+        cursor = conn.cursor()
+
+        # Выполняем SQL-запрос для обновления данных
+        cursor.execute(update_action_rating(), (want_to_watch, user_id, movie_id))
+        conn.commit()
+        conn.close()
+
+        # Отправляем новый фильм на оценку
+        send_random_movie(message)  # После оценки фильма отправляем следующий
+    else:
+        bot.reply_to(message, "Нет фильмов для оценки.")
+
+
+
 # Обработчик команды /start
 @bot.message_handler(commands=['start'])
 def handle_start(message):
@@ -247,6 +319,31 @@ def handle_start(message):
             def_find_date_of_birth(message, f'Привет! Ты попал в бота для оценки фильмов. Нам необходимо знать твой возраст для корректного подбора фильмов для тебя.')
         #bot.send_message(message.chat.id, 'Давай выберем фильм?')
     #bot.send_message(message.chat.id, f'Привет, {message.from_user.first_name}!')
+
+# Добавляем обработчик команды /stats для админов
+@bot.message_handler(commands=['stats'])
+def handle_stats(message):
+    if message.from_user.id not in ADMIN_IDS:
+        bot.reply_to(message, "Эта команда доступна только администраторам")
+        return
+        
+    conn = sqlite3.connect(Settings.file_bd)
+    cursor = conn.cursor()
+    
+    # Получаем статистику по пользователям без фильмов
+    cursor.execute(get_users_without_movies())
+    users_without_movies = cursor.fetchall()
+    conn.close()
+    
+    if users_without_movies:
+        response = "Пользователи без доступных фильмов:\n"
+        for user_id, count in users_without_movies:
+            response += f"- {get_user_info(user_id)}\n"
+    else:
+        response = "Все пользователи имеют доступные фильмы для оценки."
+    
+    bot.reply_to(message, response)
+
 
 if __name__ == '__main__':
 
