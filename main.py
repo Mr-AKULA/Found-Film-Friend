@@ -11,6 +11,12 @@ import sys
 from Settings import *
 from sql_queries import *  # Импортируем все SQL-запросы
 
+import concurrent.futures
+import functools
+import time
+
+
+
 API_TOKEN = Settings.token
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -46,6 +52,22 @@ def def_find_date_of_birth(message, send_message):
     send_message = f'{send_message}\nВведите вашу дату рождения в формате ДД.ММ.ГГГГ.'
     x = bot.send_message(message.chat.id, send_message)
     bot.register_next_step_handler(x, def_process_birth_date)
+
+
+#Тайм-аут будет действовать индивидуально для каждого пользователя, так как каждый вызов функции movie_rating_handler обрабатывается независимо для каждого пользователя.
+def timeout(seconds):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(func, *args, **kwargs)
+                try:
+                    return future.result(timeout=seconds)
+                except concurrent.futures.TimeoutError:
+                    bot.reply_to(args[0], "Время выполнения запроса истекло. Пожалуйста, попробуйте позже.")
+        return wrapper
+    return decorator
+
 
     
 #Проверка, есть ли у пользователя дата рождения.    True - есть дата рождения.
@@ -129,52 +151,71 @@ def notify_admins_no_movies(user_id):
         except Exception as e:
             print(f"Не удалось отправить уведомление админу {admin_id}: {e}")
 
+# ошибка 888 в description_status - Слишком длинное описание
+# ошибка 222 в description_status - Всё успешно
+# ошибка 111 в description_status - Описание не найдено
 
 def send_random_movie(message):
-    user_id = message.from_user.id
-    movie, movie_id = get_random_movie(user_id)
+    try:
+        user_id = message.from_user.id
+        movie, movie_id = get_random_movie(user_id)
 
-    if movie_id == "no_movies":
-        # Уведомление пользователя
-        bot.send_message(message.chat.id, "К сожалению, у нас закончились фильмы для вас. Мы уже работаем над добавлением новых!")
-        
-        # Уведомление администраторов
-        notify_admins_no_movies(user_id)
-        return
+        if movie_id == "no_movies":
+            bot.send_message(message.chat.id, "К сожалению, у нас закончились фильмы для вас. Мы уже работаем над добавлением новых!")
+            notify_admins_no_movies(user_id)
+            return
 
-    if movie:
-        title, tagline, description, release_year = movie[1], movie[2], movie[3], movie[4]
-        preview_url = get_posters_movie(movie_id)
+        if movie:
+            title, tagline, description, release_year = movie[1], movie[2], movie[3], movie[4]
+            preview_url = get_posters_movie(movie_id)
 
-        # Формируем сообщение в зависимости от наличия описания и preview_url
-        if description:
-            movie_info = f"*{title}*\n*{tagline}*\n\n{description}\n\n*{release_year}*"
-        elif tagline:
-            movie_info = f"*{title}*\n*{tagline}*\n\n*{release_year}*"
+            # Определяем статус описания
+            if description:
+                if len(description) > 900:
+                    description_status = 888  # Слишком длинное описание
+                    short_description = description[:900] + "..."
+                    movie_info = f"*{title}*\n*{tagline}*\n\n{short_description}\n\n*{release_year}*"
+                else:
+                    description_status = 222  # Успешно
+                    movie_info = f"*{title}*\n*{tagline}*\n\n{description}\n\n*{release_year}*"
+            else:
+                description_status = 111  # Описание не найдено
+                if tagline:
+                    movie_info = f"*{title}*\n*{tagline}*\n\n*{release_year}*"
+                else:
+                    movie_info = f"*{title}*\n\n*{release_year}*"
+            print(title)
+            print(f"Preview URL: {preview_url}")  # Добавьте перед отправкой
+            # Создание кнопок для оценки фильма
+            markup = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
+            btn_dislike = types.KeyboardButton('👎')
+            btn_menu = types.KeyboardButton('📺')
+            btn_like = types.KeyboardButton('👍')
+            markup.add(btn_dislike, btn_menu, btn_like)
+
+            # Сохраняем информациию об отправке фильма на оценку в базу данных
+            conn = sqlite3.connect('movies.db')
+            cursor = conn.cursor()
+            
+            # Обновляем статус описания в таблице movies
+            cursor.execute(update_movies_description_status(), (description_status, movie_id))
+            
+            cursor.execute(insert_action(), (user_id, movie_id, None, None))
+            conn.commit()
+            conn.close()
+
+            if preview_url:
+                # Отправляем изображение с подписью
+                bot.send_photo(message.chat.id, preview_url, caption=movie_info, parse_mode='Markdown', reply_markup=markup)
+            else:
+                bot.send_message(message.chat.id, movie_info, parse_mode='Markdown', reply_markup=markup)
         else:
-            movie_info = f"*{title}*\n\n*{release_year}*"
+            bot.send_message(message.chat.id, "Не удалось найти фильм для оценки.")
+    
+    except Exception as e:
+        print(f"Критическая ошибка: {e}")
+        bot.send_message(message.chat.id, "Произошла ошибка при загрузке фильма")
 
-        # Создание кнопок для оценки фильма
-        markup = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
-        btn_dislike = types.KeyboardButton('👎')
-        btn_menu = types.KeyboardButton('📺')
-        btn_like = types.KeyboardButton('👍')
-        markup.add(btn_dislike, btn_menu, btn_like)
-
-        # Сохраняем информациию об отправке фильма на оценку в базу данных
-        conn = sqlite3.connect('movies.db')
-        cursor = conn.cursor()
-        cursor.execute(insert_action(), (user_id, movie_id, None, None))
-        conn.commit()
-        conn.close()
-
-        if preview_url:
-            # Отправляем изображение с подписью
-            bot.send_photo(message.chat.id, preview_url, caption=movie_info, parse_mode='Markdown', reply_markup=markup)
-        else:
-            bot.send_message(message.chat.id, movie_info, parse_mode='Markdown', reply_markup=markup)
-    else:
-        bot.send_message(message.chat.id, "Не удалось найти фильм для оценки.")
 
 #Обработка даты рождения пользователя   
 def def_process_birth_date(message):
@@ -216,49 +257,57 @@ def def_process_birth_date(message):
         bot.reply_to(message, "Некорректный формат даты рождения. Пожалуйста, укажите дату рождения в формате ДД.ММ.ГГГГ.")
         bot.register_next_step_handler(message, def_process_birth_date)
 
+
+@timeout(2)  # Установливаем нужное количество секунд для тайм-аута
 @bot.message_handler(func=lambda message: message.text in ['👎', '👍'])
 def movie_rating_handler(message):
     user = message.from_user
     update_last_activity(user.id)  # Обновляем дату последней активности
     user_id = user.id
-    # Сохраняем оценку в базе данных
-    conn = sqlite3.connect('movies.db')
-    cursor = conn.cursor()
-
-    # Извлекаем preview_url по movie_id
-    cursor.execute(get_pending_actions(), (user_id,))
-    actions = cursor.fetchall()
-    conn.commit()
-    conn.close()
-
-    if actions:
-        # Извлекаем первую запись из actions
-        action = actions[0]
-        user_id, movie_id, _, _ = action
-
-
-        if message.text == '👎':
-            # bot.reply_to(message, "Вы поставили отрицательную оценку.")
-            want_to_watch = 0
-        elif message.text == '👍':
-            # bot.reply_to(message, "Вы поставили положительную оценку.")
-            want_to_watch = 1
-
+    
+    try:
         # Сохраняем оценку в базе данных
         conn = sqlite3.connect('movies.db')
         cursor = conn.cursor()
 
-        # Выполняем SQL-запрос для обновления данных
-        cursor.execute(update_action_rating(), (want_to_watch, user_id, movie_id))
+        # Извлекаем preview_url по movie_id
+        cursor.execute(get_pending_actions(), (user_id,))
+        actions = cursor.fetchall()
         conn.commit()
         conn.close()
 
-        # Отправляем новый фильм на оценку
-        send_random_movie(message)  # После оценки фильма отправляем следующий
-    else:
-        bot.reply_to(message, "Нет фильмов для оценки.")
+        if actions:
+            # Извлекаем первую запись из actions
+            action = actions[0]
+            user_id, movie_id, _, _ = action
 
 
+            if message.text == '👎':
+                # bot.reply_to(message, "Вы поставили отрицательную оценку.")
+                want_to_watch = 0
+            elif message.text == '👍':
+                # bot.reply_to(message, "Вы поставили положительную оценку.")
+                want_to_watch = 1
+
+            # Сохраняем оценку в базе данных
+            conn = sqlite3.connect('movies.db')
+            cursor = conn.cursor()
+
+            # Выполняем SQL-запрос для обновления данных
+            cursor.execute(update_action_rating(), (want_to_watch, user_id, movie_id))
+            conn.commit()
+            conn.close()
+
+            time.sleep(0.5)
+            # Отправляем новый фильм на оценку
+            send_random_movie(message)  # После оценки фильма отправляем следующий
+        else:
+            bot.reply_to(message, "Нет фильмов для оценки.")
+
+    except Exception as e:
+        print(f"Критическая ошибка: {e}")
+        time.sleep(1)
+        bot.reply_to(message, "Произошла ошибка подождите и попробуйте снова.")
 
 # Обработчик команды /start
 @bot.message_handler(commands=['start'])

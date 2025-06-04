@@ -5,6 +5,12 @@ import math
 def power(x, y):
     return math.pow(x, y)
 
+def update_movies_description_status():
+    return """
+    UPDATE movies
+    SET description_status = ? 
+    WHERE id = ?
+    """
 # User-related queries
 def check_user_exists():
     return "SELECT 1 FROM users WHERE user_id = ?"
@@ -33,7 +39,8 @@ def update_last_activity_user():
     SET last_activity_date = ?
     WHERE user_id = ?
     """
-
+# short_description
+# description
 # Movie-related queries
 def get_random_movie_query():
     return """
