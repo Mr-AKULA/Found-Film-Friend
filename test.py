@@ -10,6 +10,8 @@ from db_helper import update_last_activity, user_exists, save_user_info, get_ran
 API_TOKEN = Settings.token
 bot = telebot.TeleBot(API_TOKEN)
 
+
+
 def send_random_movie(message):
     user_id = message.from_user.id
     movie, movie_id = get_random_movie(user_id)
