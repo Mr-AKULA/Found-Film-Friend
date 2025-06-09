@@ -39,6 +39,30 @@ def update_last_activity_user():
     SET last_activity_date = ?
     WHERE user_id = ?
     """
+
+def get_empty_movie_query():
+    return """
+    SELECT
+        m.id,
+        m.name,
+        m.slogan,
+        m.description,
+        m.year
+    FROM movies m
+    RIGHT JOIN actions a ON m.id = a.movie_id AND a.user_id = ?
+    WHERE
+        m.age_rating <= (
+            SELECT strftime('%Y', 'now') - strftime('%Y', u.birth_date) - (
+                strftime('%m-%d', 'now') < strftime('%m-%d', u.birth_date)
+            )
+            FROM users u
+            WHERE u.user_id = ?
+        )
+        AND a.want_to_watch IS NULL
+    LIMIT 1
+    """
+
+
 # short_description
 # description
 # Movie-related queries
@@ -81,18 +105,6 @@ def get_specific_movie():
 
 def get_movie_poster():
     return "SELECT preview_url FROM posters WHERE movie_id = ?"
-
-def count_available_movies():
-    return """
-    SELECT COUNT(*) FROM movies m
-    LEFT JOIN actions a ON m.id = a.movie_id AND a.user_id = ?
-    WHERE m.age_rating <= (
-        SELECT strftime('%Y', 'now') - strftime('%Y', u.birth_date) - (
-            strftime('%m-%d', 'now') < strftime('%m-%d', u.birth_date)
-        )
-        FROM users u WHERE u.user_id = ?
-    ) AND a.movie_id IS NULL
-    """
 
 # Action-related queries
 def insert_action():

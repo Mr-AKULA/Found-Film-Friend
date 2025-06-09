@@ -91,21 +91,21 @@ def get_random_movie(user_id, film=None):
         conn = sqlite3.connect('movies.db')
         conn.create_function("POWER", 2, power)
         cursor = conn.cursor()
-        cursor.execute(get_random_movie_query(), (user_id, user_id))
-        movie = cursor.fetchone()
-        
-        # Проверка количества доступных фильмов
-        cursor.execute(count_available_movies(), (user_id, user_id))
-        remaining_movies = cursor.fetchone()[0]
-        conn.close()
-        
-        if remaining_movies == 0:
-            return None, "no_movies"
-            
+        cursor.execute(get_empty_movie_query(), (user_id, user_id))
         if movie:
             cleaned_movie = tuple(clean_none(value) for value in movie)
             return cleaned_movie, cleaned_movie[0]
-        return tuple([""]*6), ""
+        else:
+            cursor.execute(get_random_movie_query(), (user_id, user_id))
+            movie = cursor.fetchone()
+        conn.close()
+
+        if movie:
+            cleaned_movie = tuple(clean_none(value) for value in movie)
+            return cleaned_movie, cleaned_movie[0]
+        else:
+            return None, None
+        
     else:
         conn = sqlite3.connect('movies.db')
         cursor = conn.cursor()
@@ -116,7 +116,8 @@ def get_random_movie(user_id, film=None):
         if movie:
             cleaned_movie = tuple(clean_none(value) for value in movie)
             return cleaned_movie, cleaned_movie[0]
-        return tuple([""]*6), ""
+        else:
+            return None, None
 
 def get_posters_movie(movie_id):
     conn = sqlite3.connect('movies.db')
@@ -151,6 +152,8 @@ def notify_admins_no_movies(user_id):
         except Exception as e:
             print(f"Не удалось отправить уведомление админу {admin_id}: {e}")
 
+
+
 # ошибка 888 в description_status - Слишком длинное описание
 # ошибка 222 в description_status - Всё успешно
 # ошибка 111 в description_status - Описание не найдено
@@ -166,9 +169,9 @@ def send_random_movie(message):
             return
 
         if movie:
-            title, tagline, description, release_year = movie[1], movie[2], movie[3], movie[4]
+            title, tagline, description, release_year = movie[1], movie[2], movie[3], movie[4]      
+            # if tagline == None:
             preview_url = get_posters_movie(movie_id)
-
             # Определяем статус описания
             if description:
                 if len(description) > 900:
@@ -258,6 +261,52 @@ def def_process_birth_date(message):
         bot.register_next_step_handler(message, def_process_birth_date)
 
 
+
+
+def get_main_keyboard():
+    markup = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
+    btn_dislike = types.KeyboardButton('👎')
+    btn_menu = types.KeyboardButton('📺')
+    btn_like = types.KeyboardButton('👍')
+    markup.add(btn_dislike, btn_menu, btn_like)
+    return markup
+
+# Кнопки для TV-меню
+def get_tv_keyboard():
+    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    btn_back = types.KeyboardButton('🔙 Назад')
+    btn_friends = types.KeyboardButton('👥 Друзья')
+    markup.add(btn_back, btn_friends )
+    return markup
+
+# Обработчик кнопки 📺
+@bot.message_handler(func=lambda message: message.text == '📺')
+def handle_tv_button(message):
+    try:
+        # Меняем клавиатуру на TV-меню
+        bot.send_message(
+            message.chat.id, 
+            "Вы перешли в медиа-центр. Что вас интересует?", 
+            reply_markup=get_tv_keyboard()
+        )
+    except Exception as e:
+        print(f"Error: {e}")
+        bot.send_message(message.chat.id, "⚠️ Произошла ошибка")
+
+# Обработчик кнопки Назад
+@bot.message_handler(func=lambda message: message.text == '🔙 Назад')
+def handle_back_button(message):
+    try:
+        # Возвращаем главное меню
+        bot.send_message(
+            message.chat.id, 
+            "Главное меню:", 
+            reply_markup=get_main_keyboard()
+        )
+    except Exception as e:
+        print(f"Error: {e}")
+        bot.send_message(message.chat.id, "⚠️ Произошла ошибка")
+
 @timeout(2)  # Установливаем нужное количество секунд для тайм-аута
 @bot.message_handler(func=lambda message: message.text in ['👎', '👍'])
 def movie_rating_handler(message):
@@ -308,6 +357,7 @@ def movie_rating_handler(message):
         print(f"Критическая ошибка: {e}")
         time.sleep(1)
         bot.reply_to(message, "Произошла ошибка подождите и попробуйте снова.")
+
 
 # Обработчик команды /start
 @bot.message_handler(commands=['start'])
