@@ -100,7 +100,14 @@ def get_specific_movie():
         m.year,
         m.priority
     FROM movies m
-    WHERE m.id = ?
+    WHERE m.id = ? 
+    AND m.age_rating <= (
+        SELECT strftime('%Y', 'now') - strftime('%Y', u.birth_date) - (
+            strftime('%m-%d', 'now') < strftime('%m-%d', u.birth_date)
+        )
+        FROM users u
+        WHERE u.user_id = ?
+    )
     """
 
 def get_movie_poster():
