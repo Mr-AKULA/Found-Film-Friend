@@ -104,3 +104,18 @@ def timeout(seconds):
 ```
 
 Этот обновленный `README.md` включает информацию о новых функциях, таких как тайм-аут обработки запросов, и содержит более подробное описание структуры проекта и технических особенностей.
+
+id+film+group
+https://t.me/bot_for_assistant_bot?start=id=1927111121_film=123_group=1_from=YT
+id+film
+https://t.me/bot_for_assistant_bot?start=id=1927111121_film=123_from=YT
+id
+https://t.me/bot_for_assistant_bot?start=id=1927111121
+film
+https://t.me/bot_for_assistant_bot?start=film=123
+group
+https://t.me/bot_for_assistant_bot?start=group=1
+None
+https://t.me/bot_for_assistant_bot?start
+
+https://t.me/MrAKULA_bot?start=film=8421_from=YT
