@@ -406,7 +406,541 @@ def handle_page_change(call):
         bot.answer_callback_query(call.id)
     except:
         bot.answer_callback_query(call.id, "⚠️ Ошибка при переключении страницы")
-   
+
+# Глобальная переменная для хранения состояния друзей
+user_friends_state = {}
+
+@bot.message_handler(func=lambda message: message.text == '👥 Друзья')
+def handle_friends_button(message):
+    try:
+        user_id = message.from_user.id
+        # Инициализируем состояние пользователя
+        user_friends_state[user_id] = {
+            'current_page': 0,
+            'current_friend': None,
+            'view_mode': None  # 'friend_movies' или 'common_movies'
+        }
+        
+        # Показываем список друзей
+        show_friends_list(message.chat.id, user_id)
+        
+    except Exception as e:
+        print(f"Ошибка в handle_friends_button: {e}")
+        bot.send_message(message.chat.id, "⚠️ Произошла ошибка. Попробуйте позже.")
+
+def show_friends_list(chat_id, user_id, page=0):
+    """Показывает список друзей с пагинацией"""
+    try:
+        conn = sqlite3.connect('movies.db')
+        cursor = conn.cursor()
+        
+        # Получаем список друзей
+        cursor.execute("""
+            SELECT u.user_id, u.username 
+            FROM friends f
+            JOIN users u ON (f.id_friend_one = u.user_id OR f.id_friend_two = u.user_id)
+            WHERE (f.id_friend_one = ? OR f.id_friend_two = ?) 
+            AND f.friend = 1
+            AND u.user_id != ?
+            ORDER BY u.username
+        """, (user_id, user_id, user_id))
+        
+        all_friends = cursor.fetchall()
+        total_friends = len(all_friends)
+        
+        if total_friends == 0:
+            bot.send_message(chat_id, "У вас пока нет друзей.\nДобавьте кого-нибудь!")
+            return
+        
+        # Разбиваем на страницы
+        friends_per_page = 5
+        start_index = page * friends_per_page
+        end_index = start_index + friends_per_page
+        page_friends = all_friends[start_index:end_index]
+        
+        # Создаем клавиатуру
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        
+        # Добавляем кнопки друзей
+        for friend_id, friend_name in page_friends:
+            markup.add(types.InlineKeyboardButton(
+                text=f"👤 {friend_name}",
+                callback_data=f"select_friend:{friend_id}"
+            ))
+        
+        # Добавляем кнопки пагинации
+        pagination_buttons = []
+        
+        if page > 0:
+            pagination_buttons.append(types.InlineKeyboardButton(
+                text="⬅️ Назад",
+                callback_data=f"friends_page:{page-1}"
+            ))
+        
+        if end_index < total_friends:
+            pagination_buttons.append(types.InlineKeyboardButton(
+                text="Вперед ➡️",
+                callback_data=f"friends_page:{page+1}"
+            ))
+        
+        if pagination_buttons:
+            markup.row(*pagination_buttons)
+        
+        # # Добавляем кнопку возврата в главное меню
+        # markup.add(types.InlineKeyboardButton(
+        #     text="🔙 В главное меню",
+        #     callback_data="back_to_main"
+        # ))
+        
+        # Обновляем состояние
+        user_friends_state[user_id]['current_page'] = page
+        user_friends_state[user_id]['current_friend'] = None
+        user_friends_state[user_id]['view_mode'] = None
+        
+        # Отправляем или редактируем сообщение
+        if 'message_id' in user_friends_state[user_id]:
+            try:
+                bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=user_friends_state[user_id]['message_id'],
+                    text="👥 Ваши друзья:",
+                    reply_markup=markup
+                )
+            except:
+                # Если не удалось отредактировать, отправляем новое
+                msg = bot.send_message(chat_id, "👥 Ваши друзья:", reply_markup=markup)
+                user_friends_state[user_id]['message_id'] = msg.message_id
+        else:
+            msg = bot.send_message(chat_id, "👥 Ваши друзья:", reply_markup=markup)
+            user_friends_state[user_id]['message_id'] = msg.message_id
+            
+    except Exception as e:
+        print(f"Ошибка в show_friends_list: {e}")
+        bot.send_message(chat_id, "⚠️ Ошибка при загрузке списка друзей")
+
+def show_friend_options(chat_id, user_id, friend_id, friend_name):
+    """Показывает опции для выбранного друга"""
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton(
+            text="🎬 Фильмы друга",
+            callback_data=f"view_friend_movies:{friend_id}"
+        ),
+        types.InlineKeyboardButton(
+            text="🍿 Общие фильмы",
+            callback_data=f"view_common_movies:{friend_id}"
+        ),
+        types.InlineKeyboardButton(
+            text="🔙 К списку друзей",
+            callback_data="back_to_friends_list"
+        )
+    )
+    
+    # Обновляем состояние
+    user_friends_state[user_id]['current_friend'] = friend_id
+    user_friends_state[user_id]['view_mode'] = None
+    
+    try:
+        bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=user_friends_state[user_id]['message_id'],
+            text=f"Вы выбрали друга: {friend_name}\nЧто хотите посмотреть?",
+            reply_markup=markup
+        )
+    except Exception as e:
+        print(f"Ошибка при редактировании сообщения: {e}")
+
+def show_friend_movies_view(chat_id, user_id, friend_id, friend_name, page=0):
+    """Показывает фильмы друга с пагинацией"""
+    try:
+        conn = sqlite3.connect('movies.db')
+        cursor = conn.cursor()
+        
+        # Получаем фильмы друга
+        cursor.execute("""
+            SELECT DISTINCT m.id, m.name 
+            FROM movies m
+            JOIN actions a ON m.id = a.movie_id 
+            WHERE a.user_id = ? AND a.want_to_watch = 1
+            ORDER BY m.name
+        """, (friend_id,))
+        
+        all_movies = cursor.fetchall()
+        total_movies = len(all_movies)
+        
+        if total_movies == 0:
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton(
+                text="🔙 Назад",
+                callback_data=f"back_to_friend:{friend_id}"
+            ))
+            
+            bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=user_friends_state[user_id]['message_id'],
+                text=f"У друга {friend_name} пока нет лайкнутых фильмов.",
+                reply_markup=markup
+            )
+            return
+        
+        # Разбиваем на страницы
+        movies_per_page = 5
+        start_index = page * movies_per_page
+        end_index = start_index + movies_per_page
+        page_movies = all_movies[start_index:end_index]
+        
+        # Создаем клавиатуру
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        
+        # Добавляем кнопки фильмов
+        for movie_id, movie_name in page_movies:
+            markup.add(types.InlineKeyboardButton(
+                text=movie_name,
+                callback_data=f"friend_movie_info:{movie_id}"
+            ))
+        
+        # Добавляем кнопки пагинации
+        pagination_buttons = []
+        
+        if page > 0:
+            pagination_buttons.append(types.InlineKeyboardButton(
+                text="⬅️ Назад",
+                callback_data=f"friend_movies_page:{friend_id}:{page-1}"
+            ))
+        
+        if end_index < total_movies:
+            pagination_buttons.append(types.InlineKeyboardButton(
+                text="Вперед ➡️",
+                callback_data=f"friend_movies_page:{friend_id}:{page+1}"
+            ))
+        
+        if pagination_buttons:
+            markup.row(*pagination_buttons)
+        
+        # Кнопка возврата
+        markup.add(types.InlineKeyboardButton(
+            text="🔙 Назад к другу",
+            callback_data=f"back_to_friend:{friend_id}"
+        ))
+        
+        # Обновляем состояние
+        user_friends_state[user_id]['current_friend'] = friend_id
+        user_friends_state[user_id]['view_mode'] = 'friend_movies'
+        
+        # Редактируем сообщение
+        bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=user_friends_state[user_id]['message_id'],
+            text=f"🎬 Фильмы друга {friend_name} (всего {total_movies}):",
+            reply_markup=markup
+        )
+        
+    except Exception as e:
+        print(f"Ошибка в show_friend_movies_view: {e}")
+        bot.send_message(chat_id, "⚠️ Ошибка при загрузке фильмов друга")
+
+def show_common_movies_view(chat_id, user_id, friend_id, friend_name, page=0):
+    """Показывает общие фильмы с пагинацией"""
+    try:
+        conn = sqlite3.connect('movies.db')
+        cursor = conn.cursor()
+        
+        # Получаем общие фильмы
+        cursor.execute("""
+            SELECT DISTINCT m.id, m.name 
+            FROM movies m
+            JOIN actions a1 ON m.id = a1.movie_id AND a1.user_id = ? AND a1.want_to_watch = 1
+            JOIN actions a2 ON m.id = a2.movie_id AND a2.user_id = ? AND a2.want_to_watch = 1
+            ORDER BY m.name
+        """, (user_id, friend_id))
+        
+        common_movies = cursor.fetchall()
+        total_common = len(common_movies)
+        
+        if total_common == 0:
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton(
+                text="🔙 Назад",
+                callback_data=f"back_to_friend:{friend_id}"
+            ))
+            
+            bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=user_friends_state[user_id]['message_id'],
+                text=f"У вас пока нет общих лайкнутых фильмов с {friend_name}.",
+                reply_markup=markup
+            )
+            return
+        
+        # Разбиваем на страницы
+        movies_per_page = 5
+        start_index = page * movies_per_page
+        end_index = start_index + movies_per_page
+        page_movies = common_movies[start_index:end_index]
+        
+        # Создаем клавиатуру
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        
+        # Добавляем кнопки фильмов
+        for movie_id, movie_name in page_movies:
+            markup.add(types.InlineKeyboardButton(
+                text=movie_name,
+                callback_data=f"common_movie_info:{movie_id}"
+            ))
+        
+        # Добавляем кнопки пагинации
+        pagination_buttons = []
+        
+        if page > 0:
+            pagination_buttons.append(types.InlineKeyboardButton(
+                text="⬅️ Назад",
+                callback_data=f"common_movies_page:{friend_id}:{page-1}"
+            ))
+        
+        if end_index < total_common:
+            pagination_buttons.append(types.InlineKeyboardButton(
+                text="Вперед ➡️",
+                callback_data=f"common_movies_page:{friend_id}:{page+1}"
+            ))
+        
+        if pagination_buttons:
+            markup.row(*pagination_buttons)
+        
+        # Кнопка возврата
+        markup.add(types.InlineKeyboardButton(
+            text="🔙 Назад к другу",
+            callback_data=f"back_to_friend:{friend_id}"
+        ))
+        
+        # Обновляем состояние
+        user_friends_state[user_id]['current_friend'] = friend_id
+        user_friends_state[user_id]['view_mode'] = 'common_movies'
+        
+        # Редактируем сообщение
+        bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=user_friends_state[user_id]['message_id'],
+            text=f"🍿 Общие фильмы с {friend_name} (всего {total_common}):",
+            reply_markup=markup
+        )
+        
+    except Exception as e:
+        print(f"Ошибка в show_common_movies_view: {e}")
+        bot.send_message(chat_id, "⚠️ Ошибка при загрузке общих фильмов")
+
+def get_movie_info(movie_id):
+    """Получает полную информацию о фильме по его ID"""
+    try:
+        conn = sqlite3.connect('movies.db')
+        cursor = conn.cursor()
+        
+        # Получаем основную информацию о фильме
+        cursor.execute("""
+            SELECT name, tagline, description, release_year, age_rating, duration_minutes
+            FROM movies 
+            WHERE id = ?
+        """, (movie_id,))
+        
+        movie_data = cursor.fetchone()
+        
+        if not movie_data:
+            return "Информация о фильме не найдена."
+        
+        name, tagline, description, release_year, age_rating, duration = movie_data
+        
+        # Получаем жанры фильма
+        cursor.execute("""
+            SELECT g.name 
+            FROM genres g
+            JOIN movie_genres mg ON g.id = mg.genre_id
+            WHERE mg.movie_id = ?
+        """, (movie_id,))
+        genres = [genre[0] for genre in cursor.fetchall()]
+        
+        # Получаем страны производства
+        cursor.execute("""
+            SELECT c.name 
+            FROM countries c
+            JOIN movie_countries mc ON c.id = mc.country_id
+            WHERE mc.movie_id = ?
+        """, (movie_id,))
+        countries = [country[0] for country in cursor.fetchall()]
+        
+        # Получаем режиссеров
+        cursor.execute("""
+            SELECT p.name 
+            FROM persons p
+            JOIN movie_persons mp ON p.id = mp.person_id
+            WHERE mp.movie_id = ? AND mp.role = 'director'
+        """, (movie_id,))
+        directors = [director[0] for director in cursor.fetchall()]
+        
+        # Получаем актеров (первые 5)
+        cursor.execute("""
+            SELECT p.name 
+            FROM persons p
+            JOIN movie_persons mp ON p.id = mp.person_id
+            WHERE mp.movie_id = ? AND mp.role = 'actor'
+            LIMIT 5
+        """, (movie_id,))
+        actors = [actor[0] for actor in cursor.fetchall()]
+        
+        conn.close()
+        
+        # Формируем текст с информацией о фильме
+        info = f"*{name}*"
+        if tagline:
+            info += f"\n_{tagline}_"
+        
+        info += f"\n\n*Год выпуска:* {release_year}"
+        
+        if age_rating:
+            info += f"\n*Возрастное ограничение:* {age_rating}+"
+        
+        if duration:
+            hours = duration // 60
+            minutes = duration % 60
+            duration_str = f"{hours}ч {minutes}м" if hours else f"{minutes} минут"
+            info += f"\n*Длительность:* {duration_str}"
+        
+        if genres:
+            info += f"\n*Жанры:* {', '.join(genres)}"
+        
+        if countries:
+            info += f"\n*Страны:* {', '.join(countries)}"
+        
+        if directors:
+            info += f"\n*Режиссеры:* {', '.join(directors)}"
+        
+        if actors:
+            info += f"\n*Актеры:* {', '.join(actors)}"
+        
+        if description:
+            # Обрезаем слишком длинное описание
+            if len(description) > 1000:
+                description = description[:1000] + "..."
+            info += f"\n\n*Описание:*\n{description}"
+        
+        return info
+        
+    except Exception as e:
+        print(f"Ошибка при получении информации о фильме: {e}")
+        return "Не удалось загрузить информацию о фильме."
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith((
+    'select_friend:', 'view_friend_movies:', 'view_common_movies:',
+    'friends_page:', 'friend_movies_page:', 'common_movies_page:',
+    'back_to_friend:', 'back_to_friends_list', 'back_to_main',
+    'friend_movie_info:', 'common_movie_info:'
+)))
+def handle_friends_callback(call):
+    try:
+        user_id = call.from_user.id
+        chat_id = call.message.chat.id
+        
+        if user_id not in user_friends_state:
+            user_friends_state[user_id] = {
+                'message_id': call.message.message_id,
+                'current_page': 0,
+                'current_friend': None,
+                'view_mode': None
+            }
+        else:
+            user_friends_state[user_id]['message_id'] = call.message.message_id
+        
+        # Обработка разных типов callback_data
+        if call.data.startswith('select_friend:'):
+            # Пользователь выбрал друга
+            friend_id = call.data.split(':')[1]
+            friend_name = def_get_user_name(friend_id)
+            show_friend_options(chat_id, user_id, friend_id, friend_name)
+            
+        elif call.data.startswith('view_friend_movies:'):
+            # Просмотр фильмов друга
+            friend_id = call.data.split(':')[1]
+            friend_name = def_get_user_name(friend_id)
+            show_friend_movies_view(chat_id, user_id, friend_id, friend_name)
+            
+        elif call.data.startswith('view_common_movies:'):
+            # Просмотр общих фильмов
+            friend_id = call.data.split(':')[1]
+            friend_name = def_get_user_name(friend_id)
+            show_common_movies_view(chat_id, user_id, friend_id, friend_name)
+            
+        elif call.data.startswith('friends_page:'):
+            # Пагинация списка друзей
+            page = int(call.data.split(':')[1])
+            show_friends_list(chat_id, user_id, page)
+            
+        elif call.data.startswith('friend_movies_page:'):
+            # Пагинация фильмов друга
+            friend_id = call.data.split(':')[1]
+            page = int(call.data.split(':')[2])
+            friend_name = def_get_user_name(friend_id)
+            show_friend_movies_view(chat_id, user_id, friend_id, friend_name, page)
+            
+        elif call.data.startswith('common_movies_page:'):
+            # Пагинация общих фильмов
+            friend_id = call.data.split(':')[1]
+            page = int(call.data.split(':')[2])
+            friend_name = def_get_user_name(friend_id)
+            show_common_movies_view(chat_id, user_id, friend_id, friend_name, page)
+            
+        elif call.data.startswith('back_to_friend:'):
+            # Возврат к опциям друга
+            friend_id = call.data.split(':')[1]
+            friend_name = def_get_user_name(friend_id)
+            show_friend_options(chat_id, user_id, friend_id, friend_name)
+            
+        elif call.data == 'back_to_friends_list':
+            # Возврат к списку друзей
+            show_friends_list(chat_id, user_id, user_friends_state[user_id]['current_page'])
+            
+        elif call.data == 'back_to_main':
+            # Возврат в главное меню
+            bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=user_friends_state[user_id]['message_id'],
+                text="Возвращаемся в главное меню...",
+                reply_markup=None
+            )
+            send_random_movie(call.message)
+            del user_friends_state[user_id]
+            
+        elif call.data.startswith(('friend_movie_info:', 'common_movie_info:')):
+            # Просмотр информации о фильме
+            movie_id = call.data.split(':')[1]
+            movie_info = get_movie_info(movie_id)
+            
+            markup = types.InlineKeyboardMarkup()
+            if user_friends_state[user_id]['view_mode'] == 'friend_movies':
+                friend_id = user_friends_state[user_id]['current_friend']
+                markup.add(types.InlineKeyboardButton(
+                    text="🔙 Назад к фильмам друга",
+                    callback_data=f"view_friend_movies:{friend_id}"
+                ))
+            else:
+                friend_id = user_friends_state[user_id]['current_friend']
+                markup.add(types.InlineKeyboardButton(
+                    text="🔙 Назад к общим фильмам",
+                    callback_data=f"view_common_movies:{friend_id}"
+                ))
+            
+            bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=user_friends_state[user_id]['message_id'],
+                text=movie_info,
+                reply_markup=markup,
+                parse_mode='Markdown'
+            )
+            
+        bot.answer_callback_query(call.id)
+        
+    except Exception as e:
+        print(f"Ошибка в handle_friends_callback: {e}")
+        bot.answer_callback_query(call.id, "⚠️ Произошла ошибка")
+
 # Обработчик кнопки Назад
 @bot.message_handler(func=lambda message: message.text == '🔙 Назад')
 def handle_back_button(message):
@@ -468,68 +1002,6 @@ def movie_rating_handler(message):
         time.sleep(1)
         bot.reply_to(message, "Произошла ошибка подождите и попробуйте снова.")
 
-
-
-# # Обработчик команды /start
-# @bot.message_handler(commands=['start'])
-# def handle_start(message):
-#     user_id = message.from_user.id
-#     status_old_user = def_user_exists(user_id)
-#     print(f'Пользователь {user_id} старый?  {status_old_user}')
-
-#     # Парсинг параметров реферальной ссылки
-#     start_command = message.text.split(' ', 1)
-#     if len(start_command) > 1:
-#         referral_params = def_parse_referral_params(start_command[1].split('_'))
-
-#         #FIXME Если пользователь новый, то после указания даты рождения первым фильмом ему предлагается фильм, который посоветовали. 
-#         if referral_params:
-#             # Проверка наличия параметров
-#             if 'id' in referral_params and 'film' in referral_params:
-#                 user_name = def_get_user_name(referral_params["id"])                
-#                 if status_old_user:
-#                     print(1)
-#                     bot.send_message(message.chat.id, f'{user_name} предлагает посмотреть фильм {referral_params["film"]}') #FIXME Добавить функцию подбора фильмов.
-#                 else:
-#                     #FIXME После ввода даты рождения уточнить подходит ли фильм по возрасту. 
-#                     def_find_date_of_birth(message, f'{user_name} предлагает посмотреть фильм {referral_params["film"]}. Уточните ваш возраст для уточнения критериев фильма.')
-
-#             elif 'group' in referral_params:                
-#                 if status_old_user:
-#                     bot.send_message(message.chat.id, f'Список {referral_params["group"]} добавлен в списки.') #FIXME Добавить функцию подбора фильмов.
-#                 else:
-#                     def_find_date_of_birth(message, f'Список {referral_params["group"]} добавлен в списки для оценки. Для продолжение, нам необходимо уточнить ваш возраст. ')
-            
-#             elif 'film' in referral_params:              
-#                 if status_old_user:
-#                     bot.send_message(message.chat.id, f'Вы хотели бы посмотреть фильм {referral_params["film"]}?')
-#                     pass #FIXME Добавить функцию подбора фильмов.
-#                 else:
-#                     #FIXME После ввода даты рождения уточнить подходит ли фильм по возрасту. 
-#                     def_find_date_of_birth(message, f'Мы знаем, что вы хотели бы оценить фильм {referral_params["film"]}, но ответьте на один вопрос... ')
-            
-#             elif 'id' in referral_params:
-#                 user_name = def_get_user_name(referral_params["id"])
-#                 bot.send_message(message.chat.id, f'Добавим {user_name} в друзья?')
-#                 #FIXME После ответа пользователя уточнять наличие даты рождения.
-            
-#             else:
-#                 pass
-#                 #bot.send_message(message.chat.id, '1')
-
-#             def_save_referral_to_db(user_id, referral_params)
-#         else:
-#             bot.send_message(message.chat.id, '1')
-#     else:
-#         if status_old_user:
-#             bot.send_message(message.chat.id, 'Давай выберем фильм?')
-#             send_random_movie(message)
-#         else:
-#         #FIXME Сделать проверку на регистрацию пользователя. (Возможно пользователь зарегистрирован и ему не нужно указывать дату рождения.)
-#             def_find_date_of_birth(message, f'Привет! Ты попал в бота для оценки фильмов. Нам необходимо знать твой возраст для корректного подбора фильмов для тебя.')
-#         #bot.send_message(message.chat.id, 'Давай выберем фильм?')
-#     #bot.send_message(message.chat.id, f'Привет, {message.from_user.first_name}!')
-
 def film_name_fankhon(film_id): 
     """Получает название фильма по его ID"""
     # Получаем информацию о фильме из базы
@@ -540,6 +1012,50 @@ def film_name_fankhon(film_id):
     conn.close()
     
     return film_data[0] if film_data else f"фильм (ID: {film_id})"
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(('add_friend_', 'skip_friend')))
+def handle_friend_buttons(call):
+    
+    user_id = call.from_user.id
+    status_old_user = def_user_exists(user_id)
+    action, referred_user_id = call.data.split('_')[0], call.data.split('_')[2]
+    
+    friend_status = 1 if action == "add" else 0
+    conn = sqlite3.connect('movies.db')
+    cursor = conn.cursor()
+
+    # 1. Проверяем, существует ли уже запись
+    cursor.execute(
+        "SELECT 1 FROM friends WHERE id_friend_one = ? AND id_friend_two = ?",
+        (user_id, referred_user_id)
+    )
+    exists = cursor.fetchone()
+
+    # 2. Обновляем или вставляем запись
+    if exists:
+        cursor.execute(
+            "UPDATE friends SET friend = ? WHERE id_friend_one = ? AND id_friend_two = ?",
+            (friend_status, user_id, referred_user_id)
+        )
+    else:
+        cursor.execute(
+            "INSERT INTO friends (id_friend_one, id_friend_two, friend) VALUES (?, ?, ?)",
+            (user_id, referred_user_id, friend_status)
+        )
+
+    conn.commit()
+    conn.close()
+
+    # 3. Убираем кнопки и показываем результат
+    new_text = "✅ Вы добавили пользователя в друзья!" if friend_status == 1 else "❌ Вы отказались от добавления в друзья."
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text=new_text,
+        reply_markup=None  # Убираем кнопки
+    )
+
 
 
 @bot.message_handler(commands=['start'])
@@ -634,13 +1150,7 @@ def handle_start(message):
             markup = types.InlineKeyboardMarkup()
             markup.add(
                 types.InlineKeyboardButton("Добавить в друзья", callback_data=f"add_friend_{referred_user_id}"),
-                types.InlineKeyboardButton("Отказаться", callback_data="skip_friend")
-            )
-            
-            bot.send_message(
-                message.chat.id,
-                f'Хотите добавить {user_name} в друзья?',
-                reply_markup=markup
+                types.InlineKeyboardButton("Отказаться", callback_data=f"skip_friend_{referred_user_id}")  # Добавляем ID
             )
             
             if not status_old_user:
@@ -649,6 +1159,21 @@ def handle_start(message):
                     'Перед продолжением укажите вашу дату рождения.'
                 )
 
+
+            if status_old_user:
+                send_random_movie(message)
+            else:
+                # Проверка выполнения
+                def_find_date_of_birth(
+                    message,
+                        'Укажите вашу дату рождения для проверки возрастных ограничений.'
+                    )
+                                    
+            bot.send_message(
+                message.chat.id,
+                f'Хотите добавить {user_name} в друзья?',
+                reply_markup=markup
+            )
     # Сценарий 5: Обычный старт без параметров
     else:
         if status_old_user:
