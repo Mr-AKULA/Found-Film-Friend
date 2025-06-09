@@ -118,4 +118,14 @@ https://t.me/bot_for_assistant_bot?start=group=1
 None
 https://t.me/bot_for_assistant_bot?start
 
-https://t.me/MrAKULA_bot?start=film=8421_from=YT
+как будет в таблице referal
+user_id | id_referala | id_movi | id_list | from
+
+https://t.me/MrAKULA_bot?start=film=298_from=YT
+776197147	None	298	 None	YT
+
+https://t.me/MrAKULA_bot?start=id=280245855_film=854_from=YT
+776197147	280245855	85	None	YT
+
+инвайт в друзья 
+https://t.me/MrAKULA_bot?start=id=280245855
