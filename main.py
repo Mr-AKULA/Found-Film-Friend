@@ -1162,18 +1162,13 @@ def handle_start(message):
 
             if status_old_user:
                 send_random_movie(message)
-            else:
-                # Проверка выполнения
-                def_find_date_of_birth(
-                    message,
-                        'Укажите вашу дату рождения для проверки возрастных ограничений.'
-                    )
                                     
             bot.send_message(
                 message.chat.id,
                 f'Хотите добавить {user_name} в друзья?',
                 reply_markup=markup
             )
+
     # Сценарий 5: Обычный старт без параметров
     else:
         if status_old_user:
@@ -1255,6 +1250,11 @@ def handle_stats(message):
 
 
 if __name__ == '__main__':
+    while True:
+        try:
+            bot.polling(none_stop=True, timeout=60)
+        except Exception as e:
+            print(f"Ошибка: {e}")
+            time.sleep(1)  # Пауза перед повторной попыткой
 
-    bot.polling(none_stop=True)
-
+    # bot.polling(none_stop=True, timeout=60)
