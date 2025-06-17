@@ -16,7 +16,7 @@ import functools
 import time
 
 
-
+bot_username = Settings.BOT_USERNAME
 API_TOKEN = Settings.token
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -293,6 +293,183 @@ def get_tv_keyboard():
     markup.add(btn_back, btn_friends )
     return markup
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith('recommend_'))
+def handle_recommend_movie(call):
+    movie_id = int(call.data.split('_')[1])
+    user_id = call.from_user.id
+
+    link = f"https://t.me/{Settings.BOT_USERNAME}?start=id={user_id}_film={movie_id}_from=TG"
+
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("⬅ Назад", callback_data=f"movie_{movie_id}")
+    )
+
+    # Готовим текст с ссылкой в моно
+    message_text = f"*Рекомендуйте этот фильм друзьям!*\n\n`{link}`"
+
+    try:
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=message_text,
+            reply_markup=markup,
+            parse_mode='Markdown'
+        )
+    except telebot.apihelper.ApiTelegramException as e:
+        # Если это было фото → редактируем caption
+        if "no text in the message to edit" in str(e):
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=message_text,
+                reply_markup=markup,
+                parse_mode='Markdown'
+            )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('remove_'))
+def handle_update_movie(call):
+    movie_id = int(call.data.split('_')[1])
+    user_id = call.from_user.id
+
+    conn = sqlite3.connect('movies.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE actions
+        SET want_to_watch = 0
+        WHERE user_id = ? AND movie_id = ?
+    """, (user_id, movie_id))
+    conn.commit()
+    conn.close()
+
+    show_movies_page(call.message.chat.id, user_id, page=0)
+
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('watch_'))
+def handle_watch_movie(call):
+    try:
+        movie_id = int(call.data.split('_')[1])
+        chat_id = call.message.chat.id
+        user_id = call.from_user.id
+
+        # Получаем название фильма для сообщения
+        conn = sqlite3.connect('movies.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM movies WHERE id = ?", (movie_id,))
+        movie_name = cursor.fetchone()[0]
+        
+        # Получаем ссылки для просмотра
+        cursor.execute("SELECT service_name, link FROM watchability WHERE movie_id = ?", (movie_id,))
+        links = cursor.fetchall()
+        conn.close()
+
+        # Формируем текст сообщения
+        if links:
+            text = f"*{movie_name}*\n\nГде посмотреть:\n"
+            for name, link in links:
+                text += f"• [{name}]({link})\n"
+        else:
+            text = f"*{movie_name}*\n\nК сожалению, мы пока не знаем, где можно посмотреть этот фильм 😔\nПопробуйте проверить позже."
+
+        # Создаем кнопку "Назад"
+        markup = types.InlineKeyboardMarkup()
+        if 'common_movie_info' in user_friends_state.get(user_id, {}).get('view_mode', ''):
+            markup.add(types.InlineKeyboardButton(
+                "🔙 Назад", 
+                callback_data=f"common_movie_info:{movie_id}"
+            ))
+        else:
+            markup.add(types.InlineKeyboardButton(
+                "🔙 Назад", 
+                callback_data=f"movie_{movie_id}"
+            ))
+
+        # Пытаемся обновить сообщение
+        try:
+            bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=call.message.message_id,
+                text=text,
+                reply_markup=markup,
+                parse_mode='Markdown',
+                disable_web_page_preview=True
+            )
+        except:
+            try:
+                bot.edit_message_caption(
+                    chat_id=chat_id,
+                    message_id=call.message.message_id,
+                    caption=text,
+                    reply_markup=markup,
+                    parse_mode='Markdown'
+                )
+            except Exception as e:
+                print(f"Error editing message: {e}")
+                bot.send_message(
+                    chat_id,
+                    text,
+                    reply_markup=markup,
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+
+        bot.answer_callback_query(call.id)
+
+    except Exception as e:
+        print(f"Error in handle_watch_movie: {e}")
+        bot.answer_callback_query(call.id, "⚠️ Произошла ошибка при получении информации")
+@bot.callback_query_handler(func=lambda call: call.data.startswith('movie_'))
+def handle_movie_details(call):
+    try:
+        movie_id = int(call.data.split('_')[1])
+        chat_id = call.message.chat.id
+        user_id = call.from_user.id
+
+        movie, _ = get_random_movie(user_id, movie_id)
+        if not movie:
+            bot.answer_callback_query(call.id, "Фильм не найден.")
+            return
+
+        # movie = (id, name, slogan, description, year, priority)
+        title, slogan, description, release_year = movie[1], movie[2], movie[3], movie[4]
+        preview_url = get_posters_movie(movie[0])
+
+        # Формируем текст описания фильма
+        movie_info = f"*{title}*\n"
+        if slogan:
+            movie_info += f"_{slogan}_\n\n"
+        if description:
+            if len(description) > 1000:
+                description = description[:1000] + "..."
+            movie_info += f"{description}\n\n"
+        movie_info += f"*Год:* {release_year}"
+
+        # Формируем кнопки
+        markup = types.InlineKeyboardMarkup()
+        markup.add(
+            types.InlineKeyboardButton("Посмотреть", callback_data=f"watch_{movie_id}"),
+            types.InlineKeyboardButton("Убрать из списка", callback_data=f"remove_{movie_id}"),
+            types.InlineKeyboardButton("Поделиться", callback_data=f"recommend_{movie_id}")
+        )
+
+        # Отправляем постер (если есть), редактируем сообщение текста
+        if preview_url:
+            try:
+                bot.delete_message(chat_id, call.message.message_id)
+            except:
+                pass
+            bot.send_photo(chat_id, preview_url, caption=movie_info, parse_mode='Markdown', reply_markup=markup)
+        else:
+            bot.edit_message_text(chat_id=chat_id, message_id=call.message.message_id, text=movie_info, parse_mode='Markdown', reply_markup=markup)
+
+        bot.answer_callback_query(call.id)
+
+    except Exception as e:
+        print(f"Ошибка в handle_movie_details: {e}")
+        bot.answer_callback_query(call.id, "⚠️ Не удалось загрузить информацию о фильме.")
+
 # Обработчик кнопки 📺
 # Глобальная переменная для хранения текущих страниц пользователей
 user_pages = {}
@@ -305,7 +482,7 @@ def handle_tv_button(message):
         
         # Меняем основную клавиатуру
         reply_markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-        reply_markup.add('👥 Друзья', '🔙 Назад')
+        reply_markup.add('👥 Друзья', 'Поиск фильма')
         
         # Отправляем сообщение с клавиатурой (используем невидимый символ, если нужно)
         bot.send_message(
@@ -538,11 +715,11 @@ def show_friends_list(chat_id, user_id, page=0):
 def show_friend_options(chat_id, user_id, friend_id, friend_name):
     """Показывает опции для выбранного друга"""
     markup = types.InlineKeyboardMarkup(row_width=2)
+    #         types.InlineKeyboardButton(
+    #         text="🎬 Фильмы друга",
+    #         callback_data=f"view_friend_movies:{friend_id}"
+    #     ),
     markup.add(
-        types.InlineKeyboardButton(
-            text="🎬 Фильмы друга",
-            callback_data=f"view_friend_movies:{friend_id}"
-        ),
         types.InlineKeyboardButton(
             text="🍿 Общие фильмы",
             callback_data=f"view_common_movies:{friend_id}"
@@ -926,10 +1103,60 @@ def handle_friends_callback(call):
             del user_friends_state[user_id]
             
         elif call.data.startswith(('friend_movie_info:', 'common_movie_info:')):
+            try:
+                movie_id = call.data.split(':')[1]
+                chat_id = call.message.chat.id
+                user_id = call.from_user.id
+
+                movie, _ = get_random_movie(user_id, movie_id)
+                if not movie:
+                    bot.answer_callback_query(call.id, "Фильм не найден.")
+                    return
+
+                # movie = (id, name, slogan, description, year, priority)
+                title, slogan, description, release_year = movie[1], movie[2], movie[3], movie[4]
+                preview_url = get_posters_movie(movie[0])
+
+                # Формируем текст описания фильма
+                movie_info = f"*{title}*\n"
+                if slogan:
+                    movie_info += f"_{slogan}_\n\n"
+                if description:
+                    if len(description) > 1000:
+                        description = description[:1000] + "..."
+                    movie_info += f"{description}\n\n"
+                movie_info += f"*Год:* {release_year}"
+
+                # Формируем кнопки
+                markup = types.InlineKeyboardMarkup()
+                markup.add(
+                    types.InlineKeyboardButton("Посмотреть", callback_data=f"watch_{movie_id}"),
+                    types.InlineKeyboardButton("Поделиться", callback_data=f"recommend_{movie_id}")
+                )
+
+                # Отправляем постер (если есть), редактируем сообщение текста
+                if preview_url:
+                    try:
+                        bot.delete_message(chat_id, call.message.message_id)
+                    except:
+                        pass
+                    bot.send_photo(chat_id, preview_url, caption=movie_info, parse_mode='Markdown', reply_markup=markup)
+                else:
+                    bot.edit_message_text(chat_id=chat_id, message_id=call.message.message_id, text=movie_info, parse_mode='Markdown', reply_markup=markup)
+
+                bot.answer_callback_query(call.id)
+
+            except Exception as e:
+                print(f"Ошибка в handle_movie_details: {e}")
+                bot.answer_callback_query(call.id, "⚠️ Не удалось загрузить информацию о фильме.")
+
+            
             # Просмотр информации о фильме
             movie_id = call.data.split(':')[1]
             movie_info = get_movie_info(movie_id)
             
+
+
             markup = types.InlineKeyboardMarkup()
             if user_friends_state[user_id]['view_mode'] == 'friend_movies':
                 friend_id = user_friends_state[user_id]['current_friend']
@@ -959,7 +1186,7 @@ def handle_friends_callback(call):
         bot.answer_callback_query(call.id, "⚠️ Произошла ошибка")
 
 # Обработчик кнопки Назад
-@bot.message_handler(func=lambda message: message.text == '🔙 Назад')
+@bot.message_handler(func=lambda message: message.text == 'Поиск фильма')
 def handle_back_button(message):
     try:
         send_random_movie(message)
@@ -1031,12 +1258,35 @@ def film_name_fankhon(film_id):
     return film_data[0] if film_data else f"фильм (ID: {film_id})"
 
 
+
+def is_already_friends(user_id, other_user_id):
+    conn = sqlite3.connect('movies.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 1 FROM friends
+        WHERE ((id_friend_one = ? AND id_friend_two = ?) OR (id_friend_one = ? AND id_friend_two = ?))
+        AND friend = 1
+    """, (user_id, other_user_id, other_user_id, user_id))
+    result = cursor.fetchone()
+    conn.close()
+    return bool(result)
+
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith(('add_friend_', 'skip_friend')))
 def handle_friend_buttons(call):
-    
     user_id = call.from_user.id
-    status_old_user = def_user_exists(user_id)
     action, referred_user_id = call.data.split('_')[0], call.data.split('_')[2]
+    
+    # Проверяем, уже есть ли дружба
+    if action == "add" and is_already_friends(user_id, referred_user_id):
+        bot.answer_callback_query(call.id, "Вы уже дружите с этим пользователем")
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text="Вы уже дружите с этим пользователем!",
+            reply_markup=None
+        )
+        return
     
     friend_status = 1 if action == "add" else 0
     conn = sqlite3.connect('movies.db')
@@ -1063,15 +1313,6 @@ def handle_friend_buttons(call):
 
     conn.commit()
     conn.close()
-
-    # 3. Убираем кнопки и показываем результат
-    new_text = "✅ Вы добавили пользователя в друзья!" if friend_status == 1 else "❌ Вы отказались от добавления в друзья."
-    bot.edit_message_text(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        text=new_text,
-        reply_markup=None  # Убираем кнопки
-    )
 
 
 
@@ -1241,37 +1482,37 @@ def send_specific_movie(message, movie):
     conn.commit()
     conn.close()
 
-# Добавляем обработчик команды /stats для админов
-@bot.message_handler(commands=['stats'])
-def handle_stats(message):
-    if message.from_user.id not in ADMIN_IDS:
-        bot.reply_to(message, "Эта команда доступна только администраторам")
-        return
+# # Добавляем обработчик команды /stats для админов
+# @bot.message_handler(commands=['stats'])
+# def handle_stats(message):
+#     if message.from_user.id not in ADMIN_IDS:
+#         bot.reply_to(message, "Эта команда доступна только администраторам")
+#         return
         
-    conn = sqlite3.connect(Settings.file_bd)
-    cursor = conn.cursor()
+#     conn = sqlite3.connect(Settings.file_bd)
+#     cursor = conn.cursor()
     
-    # Получаем статистику по пользователям без фильмов
-    cursor.execute(get_users_without_movies())
-    users_without_movies = cursor.fetchall()
-    conn.close()
+#     # Получаем статистику по пользователям без фильмов
+#     cursor.execute(get_users_without_movies())
+#     users_without_movies = cursor.fetchall()
+#     conn.close()
     
-    if users_without_movies:
-        response = "Пользователи без доступных фильмов:\n"
-        for user_id, count in users_without_movies:
-            response += f"- {get_user_info(user_id)}\n"
-    else:
-        response = "Все пользователи имеют доступные фильмы для оценки."
+#     if users_without_movies:
+#         response = "Пользователи без доступных фильмов:\n"
+#         for user_id, count in users_without_movies:
+#             response += f"- {get_user_info(user_id)}\n"
+#     else:
+#         response = "Все пользователи имеют доступные фильмы для оценки."
     
-    bot.reply_to(message, response)
+#     bot.reply_to(message, response)
 
 
 if __name__ == '__main__':
-    while True:
-        try:
+    # while True:
+        # try:
             bot.polling(none_stop=True, timeout=60)
-        except Exception as e:
-            print(f"Ошибка: {e}")
-            time.sleep(1)  # Пауза перед повторной попыткой
+        # except Exception as e:
+        #     print(f"Ошибка: {e}")
+        #     time.sleep(1)  # Пауза перед повторной попыткой
 
     # bot.polling(none_stop=True, timeout=60)
