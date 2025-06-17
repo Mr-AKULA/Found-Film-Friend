@@ -420,6 +420,8 @@ def handle_watch_movie(call):
     except Exception as e:
         print(f"Error in handle_watch_movie: {e}")
         bot.answer_callback_query(call.id, "⚠️ Произошла ошибка при получении информации")
+
+        
 @bot.callback_query_handler(func=lambda call: call.data.startswith('movie_'))
 def handle_movie_details(call):
     try:
