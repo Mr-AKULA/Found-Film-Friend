@@ -252,7 +252,7 @@ def send_random_movie(message):
             preview_url = get_posters_movie(movie_id)
             
             # Генерируем реферальную ссылку
-            referral_link = f"https://t.me/{Settings.BOT_USERNAME}?start=id={user_id}_film={movie_id}_from=TG"
+            referral_link = f"https://t.me/{Settings.BOT_USERNAME}?start=id={user_id}_film={movie_id}_from=TG_frend"
             
             # Формируем информацию о фильме
             movie_info = f"*{title}*\n"
@@ -270,7 +270,7 @@ def send_random_movie(message):
                 description_status = 111
             
             movie_info += f"*Год выпуска:* {release_year}\n\n"
-            movie_info += f"🔗 [ТЫК]({referral_link})"
+            movie_info += f"🔗 [Ссылка для друзей]({referral_link})"
 
             # Создаем кнопки для оценки
             markup = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
@@ -279,12 +279,14 @@ def send_random_movie(message):
                 types.KeyboardButton('📺'),
                 types.KeyboardButton('👍')
             )
+            # В функции send_random_movie (или там где вы вызываете insert_action):
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
             # Сохраняем информацию о показе фильма
             conn = sqlite3.connect('movies.db')
             cursor = conn.cursor()
             cursor.execute(update_movies_description_status(), (description_status, movie_id))
-            cursor.execute(insert_action(), (user_id, movie_id, None, None))
+            cursor.execute(insert_action(), (user_id, movie_id, None, timestamp, None))
             conn.commit()
             conn.close()
 
@@ -737,9 +739,24 @@ def show_friends_list(chat_id, user_id, page=0):
         all_friends = cursor.fetchall()
         total_friends = len(all_friends)
         
+        # Генерируем реферальную ссылку
+        invite_link = f"https://t.me/{Settings.BOT_USERNAME}?start=id={user_id}"
+        
         if total_friends == 0:
-            bot.send_message(chat_id, "У вас пока нет друзей.\nДобавьте кого-нибудь!")
+            # Если нет друзей - отправляем сообщение с инвайт-ссылкой
+            bot.send_message(
+                chat_id,
+                f"У вас пока нет друзей.\n\n"
+                f"Пригласите друзей по ссылке:\n"
+                f"`{invite_link}`\n\n"
+                f"Просто отправьте им эту ссылку!",
+                parse_mode='Markdown'
+            )
             return
+        
+        # if total_friends == 0:
+        #     bot.send_message(chat_id, "У вас пока нет друзей.\nДобавьте кого-нибудь!")
+        #     return
         
         # Разбиваем на страницы
         friends_per_page = 5
@@ -762,50 +779,102 @@ def show_friends_list(chat_id, user_id, page=0):
         
         if page > 0:
             pagination_buttons.append(types.InlineKeyboardButton(
-                text="⬅️ Назад",
+                text="⬅️",
                 callback_data=f"friends_page:{page-1}"
             ))
         
         if end_index < total_friends:
             pagination_buttons.append(types.InlineKeyboardButton(
-                text="Вперед ➡️",
+                text="➡️",
                 callback_data=f"friends_page:{page+1}"
             ))
         
         if pagination_buttons:
             markup.row(*pagination_buttons)
         
+        # # Добавляем кнопку "Добавить друга" в отдельный ряд
+        # markup.row(types.InlineKeyboardButton(
+        #     text="➕ Добавить друга",
+        #     callback_data="add_new_friend"
+        # ))
+
         # # Добавляем кнопку возврата в главное меню
         # markup.add(types.InlineKeyboardButton(
         #     text="🔙 В главное меню",
         #     callback_data="back_to_main"
         # ))
+    
+        # Формируем текст сообщения с инвайт-ссылкой
+        message_text = (
+            f"👥 Ваши друзья (всего {total_friends}):\n\n"
+            f"Пригласить нового друга:\n"
+            f"`{invite_link}`"
+        )
         
         # Обновляем состояние
-        user_friends_state[user_id]['current_page'] = page
-        user_friends_state[user_id]['current_friend'] = None
-        user_friends_state[user_id]['view_mode'] = None
+        user_friends_state[user_id] = {
+            'current_page': page,
+            'current_friend': None,
+            'view_mode': None,
+            'message_id': user_friends_state.get(user_id, {}).get('message_id')
+        }
         
-        # Отправляем или редактируем сообщение
-        if 'message_id' in user_friends_state[user_id]:
-            try:
+        # Отправляем/редактируем сообщение
+        try:
+            if 'message_id' in user_friends_state[user_id]:
                 bot.edit_message_text(
                     chat_id=chat_id,
                     message_id=user_friends_state[user_id]['message_id'],
-                    text="👥 Ваши друзья:",
-                    reply_markup=markup
+                    text=message_text,
+                    reply_markup=markup,
+                    parse_mode='Markdown'
                 )
-            except:
-                # Если не удалось отредактировать, отправляем новое
-                msg = bot.send_message(chat_id, "👥 Ваши друзья:", reply_markup=markup)
+            else:
+                msg = bot.send_message(
+                    chat_id,
+                    message_text,
+                    reply_markup=markup,
+                    parse_mode='Markdown'
+                )
                 user_friends_state[user_id]['message_id'] = msg.message_id
-        else:
-            msg = bot.send_message(chat_id, "👥 Ваши друзья:", reply_markup=markup)
+        except Exception as e:
+            print(f"Ошибка при отправке сообщения: {e}")
+            msg = bot.send_message(
+                chat_id,
+                message_text,
+                reply_markup=markup,
+                parse_mode='Markdown'
+            )
             user_friends_state[user_id]['message_id'] = msg.message_id
             
     except Exception as e:
         print(f"Ошибка в show_friends_list: {e}")
         bot.send_message(chat_id, "⚠️ Ошибка при загрузке списка друзей")
+    #     # Обновляем состояние
+    #     user_friends_state[user_id]['current_page'] = page
+    #     user_friends_state[user_id]['current_friend'] = None
+    #     user_friends_state[user_id]['view_mode'] = None
+        
+    #     # Отправляем или редактируем сообщение
+    #     if 'message_id' in user_friends_state[user_id]:
+    #         try:
+    #             bot.edit_message_text(
+    #                 chat_id=chat_id,
+    #                 message_id=user_friends_state[user_id]['message_id'],
+    #                 text="👥 Ваши друзья:",
+    #                 reply_markup=markup
+    #             )
+    #         except:
+    #             # Если не удалось отредактировать, отправляем новое
+    #             msg = bot.send_message(chat_id, "👥 Ваши друзья:", reply_markup=markup)
+    #             user_friends_state[user_id]['message_id'] = msg.message_id
+    #     else:
+    #         msg = bot.send_message(chat_id, "👥 Ваши друзья:", reply_markup=markup)
+    #         user_friends_state[user_id]['message_id'] = msg.message_id
+            
+    # except Exception as e:
+    #     print(f"Ошибка в show_friends_list: {e}")
+    #     bot.send_message(chat_id, "⚠️ Ошибка при загрузке списка друзей")
 
 def show_friend_options(chat_id, user_id, friend_id, friend_name):
     """Показывает опции для выбранного друга"""
@@ -1117,19 +1186,6 @@ def get_movie_info(movie_id):
         print(f"Ошибка при получении информации о фильме: {e}")
         return "Не удалось загрузить информацию о фильме."
 
-# Вместо этого используйте обычный словарь для хранения данных:
-bot.user_data = {}  # Добавьте это после создания бота
-
-# Модифицируем функции работы с данными:
-def add_user_data(user_id, **kwargs):
-    if user_id not in bot.user_data:
-        bot.user_data[user_id] = {}
-    bot.user_data[user_id].update(kwargs)
-
-def get_user_data(user_id, key=None, default=None):
-    user_data = bot.user_data.get(user_id, {})
-    return user_data.get(key, default) if key else user_data
-
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith((
     'select_friend:', 'view_friend_movies:', 'view_common_movies:',
@@ -1304,44 +1360,138 @@ def handle_back_button(message):
         print(f"Error: {e}")
         bot.send_message(message.chat.id, "⚠️ Произошла ошибка")
 
-
-@timeout(2)  # Установливаем нужное количество секунд для тайм-аута
+@timeout(2)
 @bot.message_handler(func=lambda message: message.text in ['👎', '👍'])
 def movie_rating_handler(message):
     user = message.from_user
-    update_last_activity(user.id)  # Обновляем дату последней активности
     user_id = user.id
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
     try:
-        # Сохраняем оценку в базе данных
         conn = sqlite3.connect('movies.db')
         cursor = conn.cursor()
-
-        # Извлекаем preview_url по movie_id
-        cursor.execute(get_pending_actions(), (user_id,))
-        actions = cursor.fetchall()
-
-        if actions:
-            # Извлекаем первую запись из actions
-            action = actions[0]
-            user_id, movie_id, _, _ = action
-            
-            # Выполняем SQL-запрос для обновления данных
-            want_to_watch = 1 if message.text == '👍' else 0
-            
-            cursor.execute(update_action_rating(), (user_id, movie_id, want_to_watch))
-            conn.commit()
+        
+        # 1. Альтернативный способ найти последний показанный фильм
+        cursor.execute("""
+            SELECT a.movie_id, m.name 
+            FROM actions a
+            JOIN movies m ON a.movie_id = m.id
+            WHERE a.user_id = ? 
+            AND a.want_to_watch IS NULL
+            ORDER BY a.timestamp DESC 
+            LIMIT 1
+        """, (user_id,))
+        
+        last_movie = cursor.fetchone()
+        
+        if not last_movie:
+            bot.reply_to(message, "Не найден фильм для оценки. Попробуйте другой фильм.")
             conn.close()
+            return
+            
+        movie_id, movie_name = last_movie
+        if message.text == '👍':
+            want_to_watch = 1
 
-            
-        else:
-            bot.reply_to(message, "Нет фильмов для оценки.")
-            
-        send_random_movie(message)  # После оценки фильма отправляем следующий
+        elif message.text == '👎':
+            want_to_watch = 0
+                
+
+        # 2. Явное начало транзакции
+        conn.execute("BEGIN TRANSACTION")
+        
+        # 3. Проверка перед обновлением
+        cursor.execute("""
+            SELECT 1 FROM actions 
+            WHERE user_id = ? AND movie_id = ?
+        """, (user_id, movie_id))
+        
+        if not cursor.fetchone():
+            bot.reply_to(message, f"Фильм '{movie_name}' не найден в вашей истории")
+            conn.close()
+            return
+        
+        # 4. Основное обновление
+        cursor.execute("""
+            UPDATE actions 
+            SET want_to_watch = ?,
+                timestamp = ?,
+                rating = ?
+            WHERE user_id = ? AND movie_id = ?
+        """, (want_to_watch, timestamp, want_to_watch, user_id, movie_id))
+        
+        conn.commit()
+        # print(f"Успешно обновлен фильм {movie_id} для пользователя {user_id}: want_to_watch={want_to_watch}")
+        
+        # 5. Обновление активности
+        update_last_activity(user_id)
+        
+        # 6. Отправка нового фильма
+        send_random_movie(message)
+        
+    except sqlite3.Error as e:
+        conn.rollback()
+        print(f"Ошибка БД при сохранении оценки: {e}")
+        bot.reply_to(message, "Ошибка базы данных. Попробуйте ещё раз.")
     except Exception as e:
-        print(f"Критическая ошибка: {e}")
-        time.sleep(1)
-        bot.reply_to(message, "Произошла ошибка подождите и попробуйте снова.")
+        print(f"Общая ошибка: {e}")
+        bot.reply_to(message, "Произошла ошибка. Попробуйте ещё раз.")
+    finally:
+        conn.close() if 'conn' in locals() else None
+
+# @timeout(2)
+# @bot.message_handler(func=lambda message: message.text in ['👎', '👍'])
+# def movie_rating_handler(message):
+#     user = message.from_user
+#     user_id = user.id
+#     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+#     try:
+#         # Получаем последний показанный фильм (по временной метке)
+#         conn = sqlite3.connect('movies.db')
+#         cursor = conn.cursor()
+        
+#         # Ищем последний фильм, который был показан пользователю
+#         cursor.execute("""
+#             SELECT movie_id 
+#             FROM actions 
+#             WHERE user_id = ? 
+#             ORDER BY timestamp DESC 
+#             LIMIT 1
+#         """, (user_id,))
+        
+#         last_movie = cursor.fetchone()
+        
+#         if not last_movie:
+#             bot.reply_to(message, "Не найден фильм для оценки.")
+#             return
+            
+#         movie_id = last_movie[0]
+#         if message.text == '👍':
+#             want_to_watch = 1
+#         elif message.text == '👎':
+#             want_to_watch = 0
+               
+#         # Обновляем запись с добавлением оценки и временной метки
+#         cursor.execute("""
+#             UPDATE actions 
+#             SET want_to_watch = ?,timestamp = ?
+#             WHERE user_id = ? AND movie_id = ?
+#         """, (want_to_watch,timestamp,  user_id, movie_id))
+        
+#         conn.commit()
+#         conn.close()
+        
+#         # Обновляем последнюю активность пользователя
+#         update_last_activity(user_id)
+        
+#         # Отправляем следующий фильм
+#         send_random_movie(message)
+        
+#     except Exception as e:
+#         print(f"Ошибка при сохранении оценки: {e}")
+#         bot.reply_to(message, "Произошла ошибка. Попробуйте ещё раз.")
+
 
 def film_name_fankhon(film_id): 
     """Получает название фильма по его ID"""
@@ -1412,7 +1562,6 @@ def handle_friend_buttons(call):
     conn.close()
 
 
-
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     user_id = message.from_user.id
@@ -1435,8 +1584,6 @@ def handle_start(message):
             film_id = referral_params["film"]
             film_name = film_name_fankhon(film_id)
 
-            add_user_data(user_id, is_referral_movie=True, referral_movie_id=film_id)
-            
             if status_old_user:
                 movie, _ = get_random_movie(user_id, film_id)  # Ищем по ID
                 if movie:
@@ -1544,8 +1691,10 @@ def handle_start(message):
 
 def send_specific_movie(message, movie):
     """Отправляет конкретный фильм пользователю"""
+    user_id = message.from_user.id
+    movie_id = movie[0]
     title, tagline, description, release_year = movie[1], movie[2], movie[3], movie[4]
-    preview_url = get_posters_movie(movie[0])
+    preview_url = get_posters_movie(movie_id)
     
     movie_info = f"*{title}*\n"
     if tagline:
@@ -1554,7 +1703,7 @@ def send_specific_movie(message, movie):
         movie_info += f"{description}\n\n"
     movie_info += f"*{release_year}*"
     
-
+    # Отправка фильма пользователю
     if preview_url:
         bot.send_photo(
             message.chat.id,
@@ -1571,13 +1720,23 @@ def send_specific_movie(message, movie):
             reply_markup=get_main_keyboard()
         )
     
-    # Сохраняем информацию о показе
+    # Сохраняем информацию о показе с обработкой дубликатов
     conn = sqlite3.connect('movies.db')
     cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO actions (user_id, movie_id) VALUES (?, ?)",
-        (message.from_user.id, movie[0])
-    )
+    
+    try:
+        # Пробуем вставить новую запись
+        cursor.execute(
+            "INSERT INTO actions (user_id, movie_id, timestamp) VALUES (?, ?, ?)",
+            (user_id, movie_id, datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        )
+    except sqlite3.IntegrityError:
+        # Если запись уже существует - обновляем timestamp
+        cursor.execute(
+            "UPDATE actions SET timestamp = ? WHERE user_id = ? AND movie_id = ?",
+            (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), user_id, movie_id)
+        )
+    
     conn.commit()
     conn.close()
 
