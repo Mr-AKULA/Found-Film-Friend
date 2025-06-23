@@ -339,7 +339,7 @@ def handle_watch_movie(call):
         movie_name = cursor.fetchone()[0]
         
         # Получаем ссылки для просмотра
-        cursor.execute("SELECT service_name, link FROM watchability WHERE movie_id = ?", (movie_id,))
+        cursor.execute(cursor.execute(get_watchability_links(), (movie_id,)), (movie_id,))
         links = cursor.fetchall()
         conn.close()
 
@@ -630,15 +630,7 @@ def show_friends_list(chat_id, user_id, page=0):
         cursor = conn.cursor()
         
         # Получаем список друзей
-        cursor.execute("""
-            SELECT u.user_id, u.username 
-            FROM friends f
-            JOIN users u ON (f.id_friend_one = u.user_id OR f.id_friend_two = u.user_id)
-            WHERE (f.id_friend_one = ? OR f.id_friend_two = ?) 
-            AND f.friend = 1
-            AND u.user_id != ?
-            ORDER BY u.username
-        """, (user_id, user_id, user_id))
+        cursor.execute(cursor.execute(get_friends_list(), (user_id, user_id, user_id)), (user_id, user_id, user_id))
         
         all_friends = cursor.fetchall()
         total_friends = len(all_friends)
@@ -771,13 +763,7 @@ def show_friend_movies_view(chat_id, user_id, friend_id, friend_name, page=0):
         cursor = conn.cursor()
         
         # Получаем фильмы друга
-        cursor.execute("""
-            SELECT DISTINCT m.id, m.name 
-            FROM movies m
-            JOIN actions a ON m.id = a.movie_id 
-            WHERE a.user_id = ? AND a.want_to_watch = 1
-            ORDER BY m.name
-        """, (friend_id,))
+        cursor.execute(cursor.execute(get_friend_movies(), (friend_id,)), (friend_id,))
         
         all_movies = cursor.fetchall()
         total_movies = len(all_movies)
@@ -860,13 +846,7 @@ def show_common_movies_view(chat_id, user_id, friend_id, friend_name, page=0):
         cursor = conn.cursor()
         
         # Получаем общие фильмы
-        cursor.execute("""
-            SELECT DISTINCT m.id, m.name 
-            FROM movies m
-            JOIN actions a1 ON m.id = a1.movie_id AND a1.user_id = ? AND a1.want_to_watch = 1
-            JOIN actions a2 ON m.id = a2.movie_id AND a2.user_id = ? AND a2.want_to_watch = 1
-            ORDER BY m.name
-        """, (user_id, friend_id))
+        cursor.execute(cursor.execute(get_common_movies(), (user_id, friend_id)), (user_id, friend_id))
         
         common_movies = cursor.fetchall()
         total_common = len(common_movies)
@@ -1311,11 +1291,8 @@ def film_name_fankhon(film_id):
 def is_already_friends(user_id, other_user_id):
     conn = sqlite3.connect('movies.db')
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT 1 FROM friends
-        WHERE ((id_friend_one = ? AND id_friend_two = ?) OR (id_friend_one = ? AND id_friend_two = ?))
-        AND friend = 1
-    """, (user_id, other_user_id, other_user_id, user_id))
+    cursor.execute(check_friendship_status(), 
+                  (user_id, other_user_id, other_user_id, user_id))
     result = cursor.fetchone()
     conn.close()
     return bool(result)
