@@ -116,10 +116,10 @@ def get_movie_poster():
 # Action-related queries
 def insert_action():
     return """
-    INSERT INTO actions (
+    INSERT OR REPLACE INTO actions (
         user_id, movie_id, 
-        want_to_watch, rating
-    ) VALUES (?, ?, ?, ?)
+        want_to_watch, timestamp, rating
+    ) VALUES (?, ?, ?, ?, ?)
     """
 
 def get_pending_actions():
@@ -166,3 +166,35 @@ def get_user_name():
 
 def get_user_birth_date():
     return "SELECT birth_date FROM users WHERE user_id = ?"
+# Для проверки существования записи
+def check_existing_action():
+    return """
+    SELECT 1 FROM actions 
+    WHERE user_id = ? AND movie_id = ?
+    LIMIT 1
+    """
+
+# Для вставки или обновления записи
+def upsert_action():
+    return """
+    INSERT INTO actions (user_id, movie_id, want_to_watch) 
+    VALUES (?, ?, ?)
+    ON CONFLICT(user_id, movie_id) 
+    DO UPDATE SET want_to_watch = excluded.want_to_watch
+    """
+
+# Для обновления want_to_watch по movie_id
+def update_want_to_watch_by_movie():
+    return """
+    UPDATE actions 
+    SET want_to_watch = ?
+    WHERE movie_id = ?
+    """
+
+def get_last_shown_movie_query():
+    return """
+    SELECT movie_id FROM actions 
+    WHERE user_id = ? 
+    ORDER BY timestamp DESC 
+    LIMIT 1
+    """
