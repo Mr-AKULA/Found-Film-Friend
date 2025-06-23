@@ -136,6 +136,7 @@ def update_action_rating():
     WHERE user_id = ? AND movie_id = ?
     """
 
+
 # Admin queries
 def get_users_without_movies():
     return """
@@ -151,3 +152,17 @@ def get_users_without_movies():
     GROUP BY u.user_id
     HAVING COUNT(m.id) = 0
     """
+
+# Было (ошибочно):
+# def get_user_exists():
+#     return "SELECT 1 FROM users WHERE id = ?"
+
+# Стало (правильно):
+def get_user_exists():
+    return "SELECT 1 FROM users WHERE user_id = ?"
+
+def get_user_name():
+    return "SELECT first_name, username FROM users WHERE user_id = ?"
+
+def get_user_birth_date():
+    return "SELECT birth_date FROM users WHERE user_id = ?"
