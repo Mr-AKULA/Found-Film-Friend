@@ -136,7 +136,7 @@ def update_action_rating():
     WHERE user_id = ? AND movie_id = ?
     """
 
-
+# get_users_without_movies() - не используется (закомментирован в main.py)
 # Admin queries
 def get_users_without_movies():
     return """
@@ -174,23 +174,6 @@ def check_existing_action():
     LIMIT 1
     """
 
-# Для вставки или обновления записи
-def upsert_action():
-    return """
-    INSERT INTO actions (user_id, movie_id, want_to_watch) 
-    VALUES (?, ?, ?)
-    ON CONFLICT(user_id, movie_id) 
-    DO UPDATE SET want_to_watch = excluded.want_to_watch
-    """
-
-# Для обновления want_to_watch по movie_id
-def update_want_to_watch_by_movie():
-    return """
-    UPDATE actions 
-    SET want_to_watch = ?
-    WHERE movie_id = ?
-    """
-
 def get_last_shown_movie_query():
     return """
     SELECT movie_id FROM actions 
@@ -198,3 +181,45 @@ def get_last_shown_movie_query():
     ORDER BY timestamp DESC 
     LIMIT 1
     """
+
+# Добавить эти новые запросы:
+def get_friends_list():
+    return """
+    SELECT u.user_id, u.username 
+    FROM friends f
+    JOIN users u ON (f.id_friend_one = u.user_id OR f.id_friend_two = u.user_id)
+    WHERE (f.id_friend_one = ? OR f.id_friend_two = ?) 
+    AND f.friend = 1
+    AND u.user_id != ?
+    ORDER BY u.username
+    """
+
+def get_friend_movies():
+    return """
+    SELECT DISTINCT m.id, m.name 
+    FROM movies m
+    JOIN actions a ON m.id = a.movie_id 
+    WHERE a.user_id = ? AND a.want_to_watch = 1
+    ORDER BY m.name
+    """
+
+def get_common_movies():
+    return """
+    SELECT DISTINCT m.id, m.name 
+    FROM movies m
+    JOIN actions a1 ON m.id = a1.movie_id AND a1.user_id = ? AND a1.want_to_watch = 1
+    JOIN actions a2 ON m.id = a2.movie_id AND a2.user_id = ? AND a2.want_to_watch = 1
+    ORDER BY m.name
+    """
+
+def get_watchability_links():
+    return "SELECT service_name, link FROM watchability WHERE movie_id = ?"
+
+def check_friendship_status():
+    return """
+    SELECT 1 FROM friends
+    WHERE ((id_friend_one = ? AND id_friend_two = ?) 
+    OR (id_friend_one = ? AND id_friend_two = ?))
+    AND friend = 1
+    """
+

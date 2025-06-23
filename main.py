@@ -16,42 +16,16 @@ import functools
 import time
 
 
-bot_username = Settings.BOT_USERNAME
+BOT_USERNAME = Settings.BOT_USERNAME
 API_TOKEN = Settings.token
-
-bot = telebot.TeleBot(API_TOKEN)
-
-#TODO Сделать выбор фильмов на основе приоритетов
-#TODO Сделать список друзей(с возвожностью добавлять удалять)
-#TODO Сделать списки фильмов с проверкой необходимости их отображения. Также сделать БД к информации у кого какие списки.
-#TODO Сделать возможность поделиться фильмом (Ставя лайк или дизлайк)
-#TODO Сделать настройку приоритетов (возможно отдельным кодом) ! Сделать, весовую категорию группы и списков. Т.е. чем чаще фильм входит в различные списки, тем больше у него приоритет. 
-#TODO Просмотреть код, который отвечает за загрузку новых фильмов.
-#TODO Логика переключения между выбором и просмотром фильмов.
-#TODO Сделать возможность выбора человека (группы людей) для совместного просмотра фильма.
-#TODO Вывод списка мест, где можно посмотреть фильм.
-##TODO Если у пользователя закончились фильмы, то пользователю приходит уведомление об отсутствии фильмов. Нам приходит уведомление об отсутствии фильмов. 
-
-#Новые #TODO
-#TODO После нажатия на "📺" выпадает список фильмов , нужно сделать так , чтобы мы кликнули на фильм и вышла информация о фильме из БД  под фильмом в одном сообщении кнопки "Посмотреть" ,"Убрать из списка" ,"Порекомендовать ссылку"  
-#TODO "Посмотреть" - кнопки списком где посмотреть фильм , при нажатии открывает ссылку
-#TODO "Убрать из списка" - удаляем
-#TODO "Порекомендовать ссылку" - отправить реф ссылку на фильм с учётом id пользователя ( продумать логику)
-
-
-# Реф ссылки
-#TODO сделать проверку является ли пользователь другом.
-#TODO если пользователи уже дружат не предлагать.
-#TODO новый пользователь 
-
-
-# фильмы друга
-#TODO скрыть фильмы друга 
-#TODO выбираешь друга и сразу общие фильмы 
-#TODO добавить инфу к фильмам
 
 # Инициализация бота
 bot = telebot.TeleBot(API_TOKEN)
+
+ #TODO ПИШУЮТСЯ ТУТ:
+
+
+
 
 def power(x, y):
     return math.pow(x, y)
@@ -176,68 +150,6 @@ def notify_admins_no_movies(user_id):
 # ошибка 222 в description_status - Всё успешно
 # ошибка 111 в description_status - Описание не найдено
 
-# def send_random_movie(message):
-#     try:
-#         user_id = message.from_user.id
-#         movie, movie_id = get_random_movie(user_id)
-
-
-#         if movie_id == "no_movies":
-#             bot.send_message(message.chat.id, "К сожалению, у нас закончились фильмы для вас. Мы уже работаем над добавлением новых!")
-#             # notify_admins_no_movies(user_id)
-#             return
-
-#         if movie:
-#             title, tagline, description, release_year = movie[1], movie[2], movie[3], movie[4]      
-#             # if tagline == None:
-#             preview_url = get_posters_movie(movie_id)
-#             # Определяем статус описания
-#             if description:
-#                 if len(description) > 900:
-#                     description_status = 888  # Слишком длинное описание
-#                     short_description = description[:900] + "..."
-#                     movie_info = f"*{title}*\n*{tagline}*\n\n{short_description}\n\n*{release_year}*"
-#                 else:
-#                     description_status = 222  # Успешно
-#                     movie_info = f"*{title}*\n*{tagline}*\n\n{description}\n\n*{release_year}*"
-#             else:
-#                 description_status = 111  # Описание не найдено
-#                 if tagline:
-#                     movie_info = f"*{title}*\n*{tagline}*\n\n*{release_year}*"
-#                 else:
-#                     movie_info = f"*{title}*\n\n*{release_year}*"
-#             # print(title)
-#             # print(f"Preview URL: {preview_url}")  # Добавьте перед отправкой
-#             # Создание кнопок для оценки фильма
-#             markup = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
-#             btn_dislike = types.KeyboardButton('👎')
-#             btn_menu = types.KeyboardButton('📺')
-#             btn_like = types.KeyboardButton('👍')
-#             markup.add(btn_dislike, btn_menu, btn_like)
-
-#             # Сохраняем информациию об отправке фильма на оценку в базу данных
-#             conn = sqlite3.connect('movies.db')
-#             cursor = conn.cursor()
-            
-#             # Обновляем статус описания в таблице movies
-#             cursor.execute(update_movies_description_status(), (description_status, movie_id))
-            
-#             cursor.execute(insert_action(), (user_id, movie_id, None, None))
-#             conn.commit()
-#             conn.close()
-
-#             if preview_url:
-#                 # Отправляем изображение с подписью
-#                 bot.send_photo(message.chat.id, preview_url, caption=movie_info, parse_mode='Markdown', reply_markup=markup)
-#             else:
-#                 bot.send_message(message.chat.id, movie_info, parse_mode='Markdown', reply_markup=markup)
-#         else:
-#             bot.send_message(message.chat.id, "Не удалось найти фильм для оценки.")
-    
-#     except Exception as e:
-#         print(f"Критическая ошибка: {e}")
-#         bot.send_message(message.chat.id, "Произошла ошибка при загрузке фильма")
-
 def send_random_movie(message):
     try:
         user_id = message.from_user.id
@@ -252,7 +164,7 @@ def send_random_movie(message):
             preview_url = get_posters_movie(movie_id)
             
             # Генерируем реферальную ссылку
-            referral_link = f"https://t.me/{Settings.BOT_USERNAME}?start=id={user_id}_film={movie_id}_from=TG_frend"
+            referral_link = f"https://t.me/{BOT_USERNAME}?start=id={user_id}_film={movie_id}_from=TG_frend"
             
             # Формируем информацию о фильме
             movie_info = f"*{title}*\n"
@@ -359,20 +271,12 @@ def get_main_keyboard():
     markup.add(btn_dislike, btn_menu, btn_like)
     return markup
 
-# Кнопки для TV-меню
-def get_tv_keyboard():
-    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    btn_back = types.KeyboardButton('🔙 Назад')
-    btn_friends = types.KeyboardButton('👥 Друзья')
-    markup.add(btn_back, btn_friends )
-    return markup
-
 @bot.callback_query_handler(func=lambda call: call.data.startswith('recommend_'))
 def handle_recommend_movie(call):
     movie_id = int(call.data.split('_')[1])
     user_id = call.from_user.id
 
-    link = f"https://t.me/{Settings.BOT_USERNAME}?start=id={user_id}_film={movie_id}_from=TG"
+    link = f"https://t.me/{BOT_USERNAME}?start=id={user_id}_film={movie_id}_from=TG"
 
     markup = types.InlineKeyboardMarkup()
     markup.add(
@@ -512,7 +416,7 @@ def handle_movie_details(call):
         preview_url = get_posters_movie(movie_id)
         
         # Генерируем реферальную ссылку
-        referral_link = f"https://t.me/{Settings.BOT_USERNAME}?start=id={user_id}_film={movie_id}_from=TG"
+        referral_link = f"https://t.me/{BOT_USERNAME}?start=id={user_id}_film={movie_id}_from=TG"
         
         # Формируем информацию о фильме
         movie_info = f"*{title}*\n"
@@ -740,7 +644,7 @@ def show_friends_list(chat_id, user_id, page=0):
         total_friends = len(all_friends)
         
         # Генерируем реферальную ссылку
-        invite_link = f"https://t.me/{Settings.BOT_USERNAME}?start=id={user_id}"
+        invite_link = f"https://t.me/{BOT_USERNAME}?start=id={user_id}"
         
         if total_friends == 0:
             # Если нет друзей - отправляем сообщение с инвайт-ссылкой
@@ -753,10 +657,6 @@ def show_friends_list(chat_id, user_id, page=0):
                 parse_mode='Markdown'
             )
             return
-        
-        # if total_friends == 0:
-        #     bot.send_message(chat_id, "У вас пока нет друзей.\nДобавьте кого-нибудь!")
-        #     return
         
         # Разбиваем на страницы
         friends_per_page = 5
@@ -791,18 +691,6 @@ def show_friends_list(chat_id, user_id, page=0):
         
         if pagination_buttons:
             markup.row(*pagination_buttons)
-        
-        # # Добавляем кнопку "Добавить друга" в отдельный ряд
-        # markup.row(types.InlineKeyboardButton(
-        #     text="➕ Добавить друга",
-        #     callback_data="add_new_friend"
-        # ))
-
-        # # Добавляем кнопку возврата в главное меню
-        # markup.add(types.InlineKeyboardButton(
-        #     text="🔙 В главное меню",
-        #     callback_data="back_to_main"
-        # ))
     
         # Формируем текст сообщения с инвайт-ссылкой
         message_text = (
@@ -821,22 +709,13 @@ def show_friends_list(chat_id, user_id, page=0):
         
         # Отправляем/редактируем сообщение
         try:
-            if 'message_id' in user_friends_state[user_id]:
-                bot.edit_message_text(
-                    chat_id=chat_id,
-                    message_id=user_friends_state[user_id]['message_id'],
-                    text=message_text,
-                    reply_markup=markup,
-                    parse_mode='Markdown'
-                )
-            else:
-                msg = bot.send_message(
-                    chat_id,
-                    message_text,
-                    reply_markup=markup,
-                    parse_mode='Markdown'
-                )
-                user_friends_state[user_id]['message_id'] = msg.message_id
+            msg = bot.send_message(
+                chat_id,
+                message_text,
+                reply_markup=markup,
+                parse_mode='Markdown'
+            )
+            user_friends_state[user_id]['message_id'] = msg.message_id
         except Exception as e:
             print(f"Ошибка при отправке сообщения: {e}")
             msg = bot.send_message(
@@ -850,31 +729,7 @@ def show_friends_list(chat_id, user_id, page=0):
     except Exception as e:
         print(f"Ошибка в show_friends_list: {e}")
         bot.send_message(chat_id, "⚠️ Ошибка при загрузке списка друзей")
-    #     # Обновляем состояние
-    #     user_friends_state[user_id]['current_page'] = page
-    #     user_friends_state[user_id]['current_friend'] = None
-    #     user_friends_state[user_id]['view_mode'] = None
-        
-    #     # Отправляем или редактируем сообщение
-    #     if 'message_id' in user_friends_state[user_id]:
-    #         try:
-    #             bot.edit_message_text(
-    #                 chat_id=chat_id,
-    #                 message_id=user_friends_state[user_id]['message_id'],
-    #                 text="👥 Ваши друзья:",
-    #                 reply_markup=markup
-    #             )
-    #         except:
-    #             # Если не удалось отредактировать, отправляем новое
-    #             msg = bot.send_message(chat_id, "👥 Ваши друзья:", reply_markup=markup)
-    #             user_friends_state[user_id]['message_id'] = msg.message_id
-    #     else:
-    #         msg = bot.send_message(chat_id, "👥 Ваши друзья:", reply_markup=markup)
-    #         user_friends_state[user_id]['message_id'] = msg.message_id
-            
-    # except Exception as e:
-    #     print(f"Ошибка в show_friends_list: {e}")
-    #     bot.send_message(chat_id, "⚠️ Ошибка при загрузке списка друзей")
+
 
 def show_friend_options(chat_id, user_id, friend_id, friend_name):
     """Показывает опции для выбранного друга"""
@@ -1439,59 +1294,6 @@ def movie_rating_handler(message):
     finally:
         conn.close() if 'conn' in locals() else None
 
-# @timeout(2)
-# @bot.message_handler(func=lambda message: message.text in ['👎', '👍'])
-# def movie_rating_handler(message):
-#     user = message.from_user
-#     user_id = user.id
-#     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
-#     try:
-#         # Получаем последний показанный фильм (по временной метке)
-#         conn = sqlite3.connect('movies.db')
-#         cursor = conn.cursor()
-        
-#         # Ищем последний фильм, который был показан пользователю
-#         cursor.execute("""
-#             SELECT movie_id 
-#             FROM actions 
-#             WHERE user_id = ? 
-#             ORDER BY timestamp DESC 
-#             LIMIT 1
-#         """, (user_id,))
-        
-#         last_movie = cursor.fetchone()
-        
-#         if not last_movie:
-#             bot.reply_to(message, "Не найден фильм для оценки.")
-#             return
-            
-#         movie_id = last_movie[0]
-#         if message.text == '👍':
-#             want_to_watch = 1
-#         elif message.text == '👎':
-#             want_to_watch = 0
-               
-#         # Обновляем запись с добавлением оценки и временной метки
-#         cursor.execute("""
-#             UPDATE actions 
-#             SET want_to_watch = ?,timestamp = ?
-#             WHERE user_id = ? AND movie_id = ?
-#         """, (want_to_watch,timestamp,  user_id, movie_id))
-        
-#         conn.commit()
-#         conn.close()
-        
-#         # Обновляем последнюю активность пользователя
-#         update_last_activity(user_id)
-        
-#         # Отправляем следующий фильм
-#         send_random_movie(message)
-        
-#     except Exception as e:
-#         print(f"Ошибка при сохранении оценки: {e}")
-#         bot.reply_to(message, "Произошла ошибка. Попробуйте ещё раз.")
-
 
 def film_name_fankhon(film_id): 
     """Получает название фильма по его ID"""
@@ -1766,11 +1568,11 @@ def send_specific_movie(message, movie):
 
 
 if __name__ == '__main__':
-    # while True:
-        # try:
+    while True:
+        try:
             bot.polling(none_stop=True, timeout=60)
-        # except Exception as e:
-        #     print(f"Ошибка: {e}")
-        #     time.sleep(1)  # Пауза перед повторной попыткой
+        except Exception as e:
+            print(f"Ошибка: {e}")
+            time.sleep(1)  # Пауза перед повторной попыткой
 
     # bot.polling(none_stop=True, timeout=60)
