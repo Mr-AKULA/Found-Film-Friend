@@ -1,3 +1,5 @@
+Вот обновленный `README.md` с учетом всех изменений и новых функций:
+
 ```markdown
 # 🎬 Movie Recommendation Bot
 
@@ -13,6 +15,7 @@
 token = ''         # Токен вашего Telegram бота
 file_bd = 'movies.db'  # Путь к файлу базы данных
 XAPIKEY = ''       # API ключ от kinopoisk.dev
+BOT_USERNAME = ''  # Имя бота (без @)
 
 # Дополнительные настройки
 admin_ids = []     # ID администраторов через запятую
@@ -34,98 +37,81 @@ pip install -r requirements.txt
 | `/help` | Справка по использованию |
 | `/stats` | Статистика для администраторов |
 
+## 🔗 Реферальная система
+
+Бот поддерживает несколько форматов реферальных ссылок:
+
+| Тип ссылки | Формат | Пример | Запись в БД |
+|------------|--------|--------|-------------|
+| Фильм | `...?start=film=ID` | `...?start=film=298_from=YT` | `user_id, None, 298, None, 'YT'` |
+| Друг | `...?start=id=ID` | `...?start=id=280245855` | Приглашение в друзья |
+| Группа | `...?start=group=ID` | `...?start=group=1` | `user_id, None, None, 1, None` |
+| Комбинированная | `...?start=id=ID_film=ID` | `...?start=id=280245855_film=854` | `user_id, 280245855, 854, None, None` |
+
+Структура таблицы `referal`:
+```sql
+CREATE TABLE referal (
+    user_id INTEGER,
+    id_referala INTEGER,
+    id_movi INTEGER,
+    id_list INTEGER,
+    source TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+```
+
+## 👥 Система друзей
+
+### Инвайт-ссылка
+```
+https://t.me/{BOT_USERNAME}?start=id={USER_ID}
+```
+
+### Функционал:
+- Просмотр списка друзей
+- Общие фильмы с друзьями
+- Приглашение по ссылке
+- Подтверждение дружбы
+
 ## ⚙️ Технические особенности
 
 ### 🔍 Алгоритм рекомендаций
-
-Основной SQL-запрос (`get_random_movie_query()`) включает:
-
 ```sql
-RANDOM() * POWER(10, m.priority) DESC
+SELECT ... ORDER BY RANDOM() * POWER(10, m.priority) DESC
 ```
 
-**Проблема:** В разных версиях SQLite могут возникать ошибки вычисления POWER.
-
-**Решение:** Реализована функция:
-
+### 🕒 Тайм-аут обработки
 ```python
-def power(x, y):
-    return math.pow(x, y)
-```
-
-с регистрацией в SQLite:
-
-```python
-conn.create_function("POWER", 2, power)
+@timeout(2)
+def movie_rating_handler(message):
+    # Обработка оценки фильма
 ```
 
 ### 🗃️ Структура проекта
-
 ```
 project/
 ├── main.py          # Основной код бота
-├── sql_queries.py    # Все SQL-запросы
+├── sql_queries.py   # SQL-запросы
 ├── use_def.py       # Вспомогательные функции
-├── Settings.py       # Конфигурация
-└── movies.db        # База данных фильмов
+├── Settings.py      # Конфигурация
+└── movies.db        # База данных
 ```
 
-### 🔧 Тайм-аут обработки запросов
-
-Для улучшения пользовательского опыта добавлена функция тайм-аута, которая ограничивает время выполнения запросов. Это позволяет избежать долгого ожидания ответа от сервера и улучшает отзывчивость бота.
-
-```python
-def timeout(seconds):
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(func, *args, **kwargs)
-                try:
-                    return future.result(timeout=seconds)
-                except concurrent.futures.TimeoutError:
-                    bot.reply_to(args[0], "Время выполнения запроса истекло. Пожалуйста, попробуйте позже.")
-        return wrapper
-    return decorator
-```
-
-### 📅 Планы развития
-
-- [ ] Система друзей и групп
+## 📅 Планы развития
+- [x] Реферальная система
+- [x] Система друзей
 - [ ] Интеграция с онлайн-кинотеатрами
-- [ ] Персонализированные подборки
-- [ ] Расширенная статистика
+- [ ] Групповые просмотры
+- [ ] Расширенная аналитика
 
-### 📌 Важно
-
-Бот требует предварительной настройки базы данных с фильмами. Пример структуры таблиц доступен в файле `movies.db`.
-
-Для работы с API Кинопоиска необходим бесплатный ключ: [kinopoisk.dev](https://kinopoisk.dev/)
+## 📌 Важно
+Для работы с API Кинопоиска нужен ключ: [kinopoisk.dev](https://kinopoisk.dev/)
 ```
 
-Этот обновленный `README.md` включает информацию о новых функциях, таких как тайм-аут обработки запросов, и содержит более подробное описание структуры проекта и технических особенностей.
-
-id+film+group
-https://t.me/bot_for_assistant_bot?start=id=1927111121_film=123_group=1_from=YT
-id+film
-https://t.me/bot_for_assistant_bot?start=id=1927111121_film=123_from=YT
-id
-https://t.me/bot_for_assistant_bot?start=id=1927111121
-film
-https://t.me/bot_for_assistant_bot?start=film=123
-group
-https://t.me/bot_for_assistant_bot?start=group=1
-None
-https://t.me/bot_for_assistant_bot?start
-
-как будет в таблице referal
-user_id | id_referala | id_movi | id_list | from
-
-https://t.me/MrAKULA_bot?start=film=298_from=YT
-776197147	None	298	 None	YT
-
-https://t.me/MrAKULA_bot?start=id=280245855_film=854_from=YT
-776197147	280245855	85	None	YT
-
-инвайт в друзья 
-https://t.me/MrAKULA_bot?start=id=280245855
+Ключевые изменения:
+1. Добавлена секция про реферальную систему с примерами ссылок
+2. Описана структура таблицы `referal`
+3. Добавлена информация о системе друзей
+4. Указан обязательный параметр `BOT_USERNAME` в настройках
+5. Обновлены планы развития
+6. Добавлены примеры записей в БД для разных типов ссылок
