@@ -339,7 +339,7 @@ def handle_watch_movie(call):
         movie_name = cursor.fetchone()[0]
         
         # Получаем ссылки для просмотра
-        cursor.execute(cursor.execute(get_watchability_links(), (movie_id,)), (movie_id,))
+        cursor.execute(get_watchability_links(), (movie_id,))
         links = cursor.fetchall()
         conn.close()
 
@@ -630,7 +630,7 @@ def show_friends_list(chat_id, user_id, page=0):
         cursor = conn.cursor()
         
         # Получаем список друзей
-        cursor.execute(cursor.execute(get_friends_list(), (user_id, user_id, user_id)), (user_id, user_id, user_id))
+        cursor.execute(get_friends_list(), (user_id, user_id, user_id))
         
         all_friends = cursor.fetchall()
         total_friends = len(all_friends)
@@ -763,7 +763,7 @@ def show_friend_movies_view(chat_id, user_id, friend_id, friend_name, page=0):
         cursor = conn.cursor()
         
         # Получаем фильмы друга
-        cursor.execute(cursor.execute(get_friend_movies(), (friend_id,)), (friend_id,))
+        cursor.execute(get_friend_movies(), (friend_id,))
         
         all_movies = cursor.fetchall()
         total_movies = len(all_movies)
@@ -846,7 +846,7 @@ def show_common_movies_view(chat_id, user_id, friend_id, friend_name, page=0):
         cursor = conn.cursor()
         
         # Получаем общие фильмы
-        cursor.execute(cursor.execute(get_common_movies(), (user_id, friend_id)), (user_id, friend_id))
+        cursor.execute(get_common_movies(), (user_id, friend_id))
         
         common_movies = cursor.fetchall()
         total_common = len(common_movies)
