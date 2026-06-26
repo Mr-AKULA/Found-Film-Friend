@@ -263,23 +263,44 @@ const App = {
     hide(empty);
     show(loading);
 
-    const { data, error } = await sb
+    /* Step 1: liked movie IDs */
+    const { data: actions, error: aErr } = await sb
       .from('actions')
-      .select('movie_id, movies(id, name, year, age_rating, description, slogan, posters(preview_url))')
+      .select('movie_id')
       .eq('user_id', state.user.id)
       .eq('want_to_watch', true)
       .order('id', { ascending: false });
 
+    if (aErr) console.error('[FFF] watchlist actions error:', aErr.message);
+    if (aErr || !actions || actions.length === 0) { hide(loading); show(empty); return; }
+
+    const ids = actions.map(a => a.movie_id);
+
+    /* Step 2: movie details */
+    const { data: movies, error: mErr } = await sb
+      .from('movies')
+      .select('id, name, year, age_rating, description, slogan')
+      .in('id', ids);
+
+    if (mErr) console.error('[FFF] watchlist movies error:', mErr.message);
+
+    /* Step 3: posters (separate query — no ambiguous FK) */
+    const { data: posters } = await sb
+      .from('posters')
+      .select('movie_id, preview_url')
+      .in('movie_id', ids);
+
     hide(loading);
 
-    if (error || !data || data.length === 0) {
-      show(empty);
-      return;
-    }
+    if (!movies || movies.length === 0) { show(empty); return; }
 
-    data.forEach(row => {
-      const m = row.movies;
-      const poster = m?.posters?.[0]?.preview_url || '';
+    const movieMap  = Object.fromEntries((movies  || []).map(m => [m.id, m]));
+    const posterMap = Object.fromEntries((posters || []).map(p => [p.movie_id, p.preview_url]));
+
+    ids.forEach(id => {
+      const m = movieMap[id];
+      if (!m) return;
+      const poster = posterMap[id] || '';
       const el = createMovieMini(m, poster);
       el.addEventListener('click', () => openMovieModal(m, poster, true));
       grid.appendChild(el);
@@ -297,24 +318,28 @@ const App = {
     show(loading);
 
     const uid = state.user.id;
-    const { data, error } = await sb
+
+    /* Step 1: my friendships */
+    const { data: rows, error } = await sb
       .from('friends')
       .select('user_one, user_two')
       .or(`user_one.eq.${uid},user_two.eq.${uid}`)
       .eq('status', 1);
 
-    hide(loading);
+    if (error) console.error('[FFF] friends error:', error.message);
+    if (error || !rows || rows.length === 0) { hide(loading); show(empty); return; }
 
-    if (error || !data || data.length === 0) {
-      show(empty);
-      return;
-    }
+    /* Step 2: friend profile IDs */
+    const friendIds = rows.map(f => f.user_one === uid ? f.user_two : f.user_one);
 
-    const friendIds = data.map(f => f.user_one === uid ? f.user_two : f.user_one);
-    const { data: profiles } = await sb
+    const { data: profiles, error: pErr } = await sb
       .from('profiles')
       .select('id, display_name, email_username')
       .in('id', friendIds);
+
+    if (pErr) console.error('[FFF] friends profiles error:', pErr.message);
+
+    hide(loading);
 
     if (!profiles || profiles.length === 0) { show(empty); return; }
 
