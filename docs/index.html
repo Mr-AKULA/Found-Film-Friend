@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Found Film Friend — Свайп фильмы вместе с друзьями</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body>
+
+  <!-- ══════════════ AUTH SCREEN ══════════════ -->
+  <div id="auth-screen" class="screen">
+    <div class="auth-bg"></div>
+    <div class="auth-container">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">🎬</div>
+        <h1 class="auth-logo-title">Found Film Friend</h1>
+        <p class="auth-logo-sub">Свайпай фильмы. Смотри с друзьями.</p>
+      </div>
+
+      <!-- Login -->
+      <div id="login-form" class="auth-form">
+        <h2 class="form-title">Вход</h2>
+        <div class="input-group">
+          <label class="input-label">Email</label>
+          <input id="login-email" type="email" class="input" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Пароль</label>
+          <input id="login-password" type="password" class="input" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button id="login-btn" class="btn btn-primary">Войти</button>
+        <p class="auth-switch">Нет аккаунта? <a href="#" id="show-register">Зарегистрироваться →</a></p>
+      </div>
+
+      <!-- Register -->
+      <div id="register-form" class="auth-form hidden">
+        <h2 class="form-title">Регистрация</h2>
+        <div class="input-group">
+          <label class="input-label">Email</label>
+          <input id="reg-email" type="email" class="input" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Пароль</label>
+          <input id="reg-password" type="password" class="input" placeholder="Минимум 6 символов" autocomplete="new-password">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Дата рождения <span class="label-hint">(для фильтра по возрасту)</span></label>
+          <input id="reg-birthdate" type="date" class="input">
+        </div>
+        <button id="register-btn" class="btn btn-primary">Создать аккаунт</button>
+        <p class="auth-switch">Уже есть аккаунт? <a href="#" id="show-login">Войти →</a></p>
+      </div>
+
+      <div id="auth-msg" class="auth-msg hidden"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ MAIN APP ══════════════ -->
+  <div id="app-screen" class="screen hidden">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-logo">🎬 <span>FFF</span></div>
+      <button id="logout-btn" class="btn-icon" title="Выйти">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Pages -->
+    <main class="pages">
+
+      <!-- ── BROWSE ── -->
+      <div id="page-browse" class="page active">
+        <div id="browse-main">
+          <div id="movie-card" class="movie-card">
+            <div class="card-poster-wrap">
+              <img id="card-poster" class="card-poster" src="" alt="">
+              <div class="card-poster-gradient"></div>
+            </div>
+            <div class="card-content">
+              <div class="card-tags">
+                <span id="card-year" class="tag tag-year"></span>
+                <span id="card-age" class="tag tag-age"></span>
+              </div>
+              <h2 id="card-title" class="card-title"></h2>
+              <p id="card-tagline" class="card-tagline"></p>
+              <p id="card-desc" class="card-desc"></p>
+            </div>
+          </div>
+
+          <div class="card-actions">
+            <button id="dislike-btn" class="action-btn action-dislike" title="Не интересно">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+            <button id="like-btn" class="action-btn action-like" title="Хочу посмотреть">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+            </button>
+          </div>
+
+          <p class="swipe-hint">← свайп или кнопки →</p>
+        </div>
+
+        <div id="browse-loading" class="state hidden">
+          <div class="spinner"></div>
+          <p>Подбираем фильм...</p>
+        </div>
+        <div id="browse-empty" class="state hidden">
+          <div class="state-icon">🎉</div>
+          <h3>Вы всё оценили!</h3>
+          <p>Скоро добавим новые фильмы. Пока загляните в свой список.</p>
+          <button class="btn btn-outline" onclick="App.navigate('watchlist')">Мой список</button>
+        </div>
+      </div>
+
+      <!-- ── WATCHLIST ── -->
+      <div id="page-watchlist" class="page hidden">
+        <h2 class="page-title">Мой список</h2>
+        <div id="watchlist-grid" class="movie-grid"></div>
+        <div id="watchlist-empty" class="state hidden">
+          <div class="state-icon">🎭</div>
+          <h3>Список пуст</h3>
+          <p>Ставьте ❤️ фильмам — они появятся здесь</p>
+        </div>
+        <div id="watchlist-loading" class="state hidden">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <!-- ── FRIENDS ── -->
+      <div id="page-friends" class="page hidden">
+        <h2 class="page-title">Друзья</h2>
+        <div class="invite-card">
+          <p class="invite-label">Ваша ссылка для приглашения:</p>
+          <div class="invite-row">
+            <code id="invite-link" class="invite-link"></code>
+            <button id="copy-btn" class="btn-copy">Копировать</button>
+          </div>
+        </div>
+        <div id="friends-list" class="friends-list"></div>
+        <div id="friends-loading" class="state hidden"><div class="spinner"></div></div>
+        <div id="friends-empty" class="state hidden">
+          <div class="state-icon">👥</div>
+          <h3>Пока нет друзей</h3>
+          <p>Поделитесь ссылкой выше — и друг появится в списке</p>
+        </div>
+
+        <!-- Common movies panel (shown when friend selected) -->
+        <div id="common-panel" class="common-panel hidden">
+          <div class="common-header">
+            <button id="common-back" class="btn-back">← Назад</button>
+            <h3 id="common-title">Общие фильмы</h3>
+          </div>
+          <div id="common-grid" class="movie-grid"></div>
+          <div id="common-empty" class="state hidden">
+            <div class="state-icon">🍿</div>
+            <h3>Нет общих фильмов</h3>
+            <p>Оценивайте больше фильмов — появятся совпадения!</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-page="browse">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="2" width="20" height="20" rx="3"/><path d="M8 2v20M16 2v20M2 8h20M2 16h20"/>
+        </svg>
+        <span>Смотреть</span>
+      </button>
+      <button class="nav-btn" data-page="watchlist">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        <span>Список</span>
+      </button>
+      <button class="nav-btn" data-page="friends">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span>Друзья</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ══════════════ MOVIE DETAIL MODAL ══════════════ -->
+  <div id="movie-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-overlay" id="modal-overlay"></div>
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <button class="modal-close" id="modal-close" aria-label="Закрыть">✕</button>
+      <img id="modal-poster" class="modal-poster" src="" alt="">
+      <div class="modal-body">
+        <div class="modal-tags">
+          <span id="modal-year" class="tag tag-year"></span>
+          <span id="modal-age" class="tag tag-age"></span>
+          <span id="modal-duration" class="tag"></span>
+        </div>
+        <h2 id="modal-title" class="modal-title"></h2>
+        <p id="modal-tagline" class="modal-tagline"></p>
+        <p id="modal-desc" class="modal-desc"></p>
+        <div id="modal-watch" class="modal-watch-section hidden">
+          <h4 class="modal-section-label">Где посмотреть</h4>
+          <div id="modal-watch-links" class="watch-links"></div>
+        </div>
+        <button id="modal-remove-btn" class="btn btn-danger">Убрать из списка</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ FRIEND REQUEST BANNER ══════════════ -->
+  <div id="friend-banner" class="friend-banner hidden">
+    <div class="friend-banner-inner">
+      <p id="friend-banner-text">Добавить в друзья?</p>
+      <div class="friend-banner-btns">
+        <button id="friend-add-btn" class="btn btn-primary btn-sm">Добавить</button>
+        <button id="friend-skip-btn" class="btn btn-ghost btn-sm">Пропустить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ TOAST ══════════════ -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

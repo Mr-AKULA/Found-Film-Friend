@@ -1,4 +1,24 @@
+# ── Секреты и конфиг ──────────────────────────────────
 /Settings.py
+export_to_supabase.py
+
+# ── База данных (хранится в Supabase, не в репо) ───────
+*.db
+*.sqlite
+
+# ── Большие файлы данных ───────────────────────────────
+film_list.json
+all_film_list.json
+Found_Film_Friend_new/
+
+# ── Android build ──────────────────────────────────────
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+*.aab
+*.keystore
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
