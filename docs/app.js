@@ -80,6 +80,11 @@ async function initAuth() {
   }
 
   sb.auth.onAuthStateChange(async (_event, session) => {
+    if (_event === 'PASSWORD_RECOVERY') {
+      showScreen('auth');
+      showAuthForm('newpass');
+      return;
+    }
     if (session) await onSignedIn(session.user);
     else         showScreen('auth');
   });
@@ -152,11 +157,43 @@ function showAuthMsg(text, type) {
   show(el);
 }
 
+function showAuthForm(name) {
+  ['login-form', 'register-form', 'forgot-form', 'newpass-form']
+    .forEach(id => hide($(`#${id}`)));
+  show($(`#${name}-form`));
+  hide($('#auth-msg'));
+}
+
 function showScreen(name) {
   hide($('#auth-screen'));
   hide($('#app-screen'));
   if (name === 'auth') show($('#auth-screen'));
   if (name === 'app')  show($('#app-screen'));
+}
+
+async function handleForgotPassword() {
+  const email = $('#forgot-email').value.trim();
+  if (!email) return showAuthMsg('Введите email', 'error');
+  showAuthMsg('Отправляем...', '');
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: `${location.origin}${location.pathname}`,
+  });
+  if (error) return showAuthMsg(error.message, 'error');
+  showAuthMsg('Ссылка отправлена! Проверьте почту.', 'success');
+}
+
+async function handleNewPassword() {
+  const pass    = $('#newpass-password').value;
+  const confirm = $('#newpass-confirm').value;
+  if (!pass || !confirm) return showAuthMsg('Заполните все поля', 'error');
+  if (pass.length < 6)   return showAuthMsg('Пароль минимум 6 символов', 'error');
+  if (pass !== confirm)  return showAuthMsg('Пароли не совпадают', 'error');
+  showAuthMsg('Сохраняем...', '');
+  const { error } = await sb.auth.updateUser({ password: pass });
+  if (error) return showAuthMsg(error.message, 'error');
+  showAuthMsg('Пароль изменён! Войдите с новым паролем.', 'success');
+  await sb.auth.signOut();
+  setTimeout(() => showAuthForm('login'), 2000);
 }
 
 /* ══════════════════════════════════════════════
@@ -652,6 +689,14 @@ document.addEventListener('DOMContentLoaded', () => {
     show($('#login-form'));
     hide($('#auth-msg'));
   });
+
+  /* Forgot / Reset password */
+  $('#show-forgot').addEventListener('click',   e => { e.preventDefault(); showAuthForm('forgot'); });
+  $('#show-login-2').addEventListener('click',  e => { e.preventDefault(); showAuthForm('login'); });
+  $('#forgot-btn').addEventListener('click',    handleForgotPassword);
+  $('#newpass-btn').addEventListener('click',   handleNewPassword);
+  $('#forgot-email').addEventListener('keydown', e => { if (e.key === 'Enter') handleForgotPassword(); });
+  $('#newpass-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') handleNewPassword(); });
 
   /* Enter key in forms */
   $('#login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
