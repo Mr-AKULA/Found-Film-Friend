@@ -1,4 +1,4 @@
-const CACHE = 'fff-v4';
+const CACHE = 'fff-v5';
 /* Only cache the shell — JS/CSS fetched fresh each time so updates apply instantly */
 const STATIC = [
   '/Found-Film-Friend/',
@@ -19,9 +19,10 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  /* Pass through Supabase API and CDN calls — never cache them */
   const url = e.request.url;
-  if (url.includes('supabase.co') || url.includes('unpkg.com') || url.includes('fonts.')) return;
+  /* Never cache: API calls, CDN scripts, and our own JS/CSS (always fetch fresh) */
+  if (url.includes('supabase.co') || url.includes('unpkg.com') || url.includes('fonts.') ||
+      url.endsWith('.js') || url.endsWith('.css')) return;
 
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
