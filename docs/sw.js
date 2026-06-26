@@ -19,8 +19,9 @@ self.addEventListener('fetch', e => {
   const url = e.request.url;
 
   /* Skip: API calls, CDN, our own JS/CSS — always fresh */
+  const path = new URL(url).pathname;
   if (url.includes('supabase.co') || url.includes('unpkg.com') || url.includes('fonts.') ||
-      url.endsWith('.js') || url.endsWith('.css')) return;
+      path.endsWith('.js') || path.endsWith('.css')) return;
 
   /* HTML pages: network-first so updates are instant; cache is offline fallback */
   if (e.request.mode === 'navigate' || url.endsWith('.html') ||
