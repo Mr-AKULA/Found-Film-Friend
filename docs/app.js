@@ -280,7 +280,7 @@ const App = {
       .eq('want_to_watch', true)
       .order('id', { ascending: false });
 
-    if (aErr) console.error('[FFF] watchlist actions error:', aErr.message);
+    if (aErr) { console.error('[FFF] watchlist:', aErr.message); showToast('Ошибка списка: ' + aErr.message, 4000); }
     if (aErr || !actions || actions.length === 0) { hide(loading); show(empty); return; }
 
     const ids = actions.map(a => a.movie_id);
@@ -335,7 +335,7 @@ const App = {
       .or(`user_one.eq.${uid},user_two.eq.${uid}`)
       .eq('status', 1);
 
-    if (error) console.error('[FFF] friends error:', error.message);
+    if (error) { console.error('[FFF] friends:', error.message); showToast('Ошибка друзей: ' + error.message, 4000); }
     if (error || !rows || rows.length === 0) { hide(loading); show(empty); return; }
 
     /* Step 2: friend profile IDs */
@@ -429,13 +429,18 @@ async function showFriendBanner(friendId) {
 
 async function addFriend(friendId) {
   const uid = state.user.id;
-  await sb.from('friends').upsert(
+  const { error } = await sb.from('friends').upsert(
     { user_one: uid, user_two: friendId, status: 1 },
     { onConflict: 'user_one,user_two' }
   );
   hide($('#friend-banner'));
   state.pendingFriend = null;
   try { sessionStorage.removeItem('fff_invite'); } catch {}
+  if (error) {
+    console.error('[FFF] addFriend error:', error);
+    showToast('Ошибка: ' + error.message, 5000);
+    return;
+  }
   showToast('Друг добавлен! 👥');
   history.replaceState({}, '', location.pathname);
   App.navigate('friends');
