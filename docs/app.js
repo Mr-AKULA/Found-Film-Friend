@@ -73,21 +73,31 @@ async function initAuth() {
   }
 
   /* Detect password recovery from URL hash — Supabase adds #type=recovery
-     after the user clicks the reset link in the email. We check this
-     ourselves because getSession() may run before detectSessionInUrl
-     processes the hash, causing PASSWORD_RECOVERY event to be missed. */
+     after the user clicks the reset link in the email.
+     We handle this BEFORE getSession() to prevent auto-login:
+     manually call setSession() with the tokens so updateUser() works,
+     then show the newpass form and return early. */
   const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
   if (hashParams.get('type') === 'recovery') {
     showScreen('auth');
     showAuthForm('newpass');
-    sb.auth.onAuthStateChange(async (_event, session) => {
-      if (_event === 'PASSWORD_RECOVERY') {
-        showScreen('auth');
-        showAuthForm('newpass');
-        return;
-      }
-      /* After saving new password we call signOut → show login */
-      if (!session) showScreen('auth');
+
+    /* Manually establish the recovery session so updateUser() can run.
+       detectSessionInUrl would eventually do this but fires SIGNED_IN
+       which would navigate away from the newpass form. */
+    const accessToken  = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    if (accessToken && refreshToken) {
+      await sb.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+    }
+
+    /* Clear the hash so the tokens don't linger in the URL */
+    history.replaceState(null, '', location.pathname);
+
+    sb.auth.onAuthStateChange(async (_event, _session) => {
+      /* Ignore SIGNED_IN that fires after setSession — stay on newpass form.
+         Only react to explicit signOut (no session) → back to login. */
+      if (_event === 'SIGNED_OUT') showScreen('auth');
     });
     return;
   }
