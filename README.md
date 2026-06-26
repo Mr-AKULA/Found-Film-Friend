@@ -20,59 +20,51 @@
 
 **Found Film Friend** — сервис рекомендаций фильмов с системой друзей. Пользователь листает карточки фильмов (как Tinder), ставит лайк или дизлайк, формирует список «хочу посмотреть», и видит общие фильмы с друзьями.
 
+База данных: **12 000+ фильмов** с постерами, жанрами и ссылками на стриминговые сервисы.
+
 Проект доступен в **трёх форматах**:
 
 | Платформа | Статус | Технологии |
 |-----------|--------|------------|
+| 🌐 Web App | ✅ Запущен | Vanilla JS, Supabase, GitHub Pages |
 | 🤖 Telegram Bot | ✅ Запущен | Python, pyTeleBot, SQLite |
-| 🌐 Web App | ✅ GitHub Pages | HTML/CSS/JS, Supabase |
 | 📱 Android | 🚧 В разработке | Java, Retrofit, Supabase |
 
 ---
 
 ## Возможности
 
-- **Свайп фильмов** — листайте карточки, оценивайте одним нажатием
-- **Умный алгоритм** — фильмы подбираются по приоритету и ещё не просмотренные
-- **Возрастной фильтр** — показываются только фильмы подходящего рейтинга
-- **Мой список** — все лайкнутые фильмы в одном месте
+### Умный алгоритм подбора
+Каждый фильм получает скор из трёх сигналов:
+
+```
+скор = RANDOM() × 10 ^ ( priority + log(лайки сообщества) + log(жанровые предпочтения юзера) )
+```
+
+| Сигнал | Источник | Эффект |
+|--------|----------|--------|
+| `priority` | Задаётся вручную (1–3) | Качественные фильмы чаще |
+| `log(лайки)` | Всё сообщество | Популярное поднимается само |
+| `log(жанровый скор)` | Личные лайки юзера | Персонализация по вкусу |
+
+Чем больше фильмов оценил пользователь — тем точнее подборка.
+
+### Полный список функций
+
+- **Свайп фильмов** — листайте карточки, оценивайте кнопками или жестами
+- **Возрастной фильтр** — фильмы подбираются под возраст пользователя
+- **Мой список** — все лайкнутые фильмы с постерами
+- **Система друзей** — пригласите друга по персональной ссылке
+- **Общие фильмы** — видите что совпадает с конкретным другом
+- **Список друга** — можно посмотреть что лайкнул друг
+- **Сброс пароля** — восстановление через email
+- **Персонализация** — алгоритм учится на жанрах которые вы лайкаете
+- **Народный рейтинг** — лайки всех пользователей влияют на порядок
 - **Где посмотреть** — прямые ссылки на стриминговые сервисы
-- **Система друзей** — пригласите друга по ссылке, найдите общие фильмы
-- **Реферальные ссылки** — поделитесь конкретным фильмом в Telegram
-
----
-
-## Ветки репозитория
-
-```
-main           — стабильная версия
-├── telegram   — Telegram бот (Python)
-├── web        — Веб-приложение (GitHub Pages + Supabase)
-└── android    — Android приложение (Java)
-```
 
 ---
 
 ## Быстрый старт
-
-### 🤖 Telegram Bot
-
-```bash
-# 1. Клонируем репозиторий
-git clone https://github.com/Mr-AKULA/Found-Film-Friend.git
-cd Found-Film-Friend
-
-# 2. Устанавливаем зависимости
-pip install -r requirements.txt
-
-# 3. Настраиваем Settings.py
-#    token = "ВАШ_ТОКЕН_БОТА"
-#    BOT_USERNAME = "имя_бота"
-#    ADMIN_IDS = [ваш_id]
-
-# 4. Запускаем
-python main.py
-```
 
 ### 🌐 Web App (GitHub Pages + Supabase)
 
@@ -80,58 +72,63 @@ python main.py
 1. Создайте проект на https://supabase.com
 2. Запустите docs/supabase.sql в SQL Editor
 3. В docs/app.js замените:
-   - SUPABASE_URL  = 'https://xxxxxxxx.supabase.co'
-   - SUPABASE_ANON_KEY = 'ваш_anon_key'
-4. В настройках репозитория включите:
-   Settings → Pages → Source: /docs
-5. Добавьте данные о фильмах через Supabase Table Editor
+   SUPABASE_URL     = 'https://xxxxxxxx.supabase.co'
+   SUPABASE_ANON_KEY = 'ваш_anon_key'
+4. Settings → Pages → Source: /docs
+5. В Supabase → Auth → URL Configuration установите:
+   Site URL: https://ВАШ-НИК.github.io/Found-Film-Friend/
+6. Загрузите фильмы через export_to_supabase.py
+7. (Опционально) Загрузите постеры через upload_posters.py
+```
+
+### 🤖 Telegram Bot
+
+```bash
+git clone https://github.com/Mr-AKULA/Found-Film-Friend.git
+cd Found-Film-Friend
+pip install -r requirements.txt
+# Настройте Settings.py: token, BOT_USERNAME, ADMIN_IDS
+python main.py
 ```
 
 ### 📱 Android App
 
 ```
 1. Откройте папку android/ в Android Studio
-2. В app/build.gradle замените:
-   SUPABASE_URL      = 'https://xxxxxxxx.supabase.co'
-   SUPABASE_ANON_KEY = 'ваш_anon_key'
-3. Build → Run (минимум Android 8.0 / API 26)
+2. Замените SUPABASE_URL и SUPABASE_ANON_KEY в app/build.gradle
+3. Build → Run (Android 8.0+ / API 26)
 ```
 
 ---
 
 ## Архитектура
 
-### База данных (Supabase / SQLite)
+### База данных (Supabase PostgreSQL)
 
 ```
-users/profiles   ←──┐
-movies               │
-  ├── posters        │
-  ├── genres         │
-  ├── watchability   │
-  └── countries      │
-actions (ratings) ───┤  user_id → profiles
-friends ─────────────┘
+profiles         ←── auth.users (auto-created via trigger)
+movies
+  ├── posters         (preview_url → Supabase Storage)
+  ├── genres
+  ├── movie_genres    (many-to-many)
+  ├── watchability    (ссылки на стриминг)
+  └── countries
+actions          (user_id, movie_id, want_to_watch)
+friends          (user_one, user_two, status)
 referrals
 ```
 
-### Алгоритм подбора фильмов
+### Row Level Security
 
-```sql
--- Случайный фильм с учётом приоритета
-ORDER BY RANDOM() * POWER(10, priority) DESC
-```
+Все таблицы защищены RLS-политиками:
+- Фильмы/постеры/жанры — публичное чтение
+- Actions — только свои записи
+- Friends — видит только участников дружбы
+- Profiles — публичное чтение, запись только своего
 
-Фильмы с высоким `priority` показываются чаще — удобно для продвижения новых фильмов.
+### RPC функция `get_next_movie`
 
-### Реферальные ссылки (Telegram Bot)
-
-| Тип | Формат | Описание |
-|-----|--------|----------|
-| Фильм | `?start=film=ID` | Открывает конкретный фильм |
-| Друг | `?start=id=ID` | Предлагает добавить в друзья |
-| Фильм + Друг | `?start=id=ID_film=ID` | Комбо |
-| Группа | `?start=group=ID` | Подборка фильмов |
+Выбирает случайный непросмотренный фильм с учётом возраста и трёх сигналов ранжирования. Работает через PostgreSQL `WITH` запросы без JOIN на posters (скалярный подзапрос исключает ambiguous column).
 
 ---
 
@@ -142,76 +139,57 @@ Found_Film_Friend/
 ├── 📁 docs/                    ← GitHub Pages (web app)
 │   ├── index.html              ← SPA
 │   ├── style.css               ← Dark cinema theme
-│   ├── app.js                  ← Логика + Supabase
-│   └── supabase.sql            ← Схема БД
+│   ├── app.js                  ← Логика + Supabase SDK
+│   └── supabase.sql            ← Схема БД + RPC функции
 │
 ├── 📁 android/                 ← Android приложение
 │   └── app/src/main/
 │       ├── java/com/foundfilmfriend/
-│       │   ├── MainActivity.java
-│       │   ├── AuthActivity.java
-│       │   ├── SplashActivity.java
-│       │   ├── api/
-│       │   │   ├── ApiClient.java
-│       │   │   └── SupabaseApi.java
-│       │   └── model/
-│       │       ├── Movie.java
-│       │       └── Profile.java
 │       └── res/layout/
 │
-├── 📄 main.py                  ← Telegram Bot (главный)
-├── 📄 sql_queries.py           ← SQL запросы
-├── 📄 use_def.py               ← Вспомогательные функции
-├── 📄 Settings.py              ← Конфигурация
-├── 📄 requirements.txt
-└── 📄 movies.db                ← SQLite база
+├── 📄 main.py                  ← Telegram Bot
+├── 📄 sql_queries.py           ← SQL запросы бота
+├── 📄 export_to_supabase.py    ← Миграция SQLite → Supabase
+├── 📄 upload_posters.py        ← Загрузка постеров в Storage
+└── 📄 movies.db                ← SQLite (локальная копия)
 ```
 
 ---
 
 ## Технологии
 
-**Telegram Bot:**
-- `pyTelegramBotAPI` — работа с Telegram API
-- `SQLite` — база данных
-- `python-dotenv` — управление конфигурацией
-
 **Web App:**
-- Vanilla JS (без фреймворков) — работает прямо на GitHub Pages
-- `Supabase JS SDK v2` — аутентификация + база данных
-- `PostgreSQL` (через Supabase) — с Row Level Security
+- Vanilla JS (без фреймворков) — работает на GitHub Pages
+- `Supabase JS SDK v2` — auth + database + storage
+- `PostgreSQL` через Supabase — с Row Level Security
+- `persistSession: false` — обход Tracking Prevention в Edge/Firefox
 - CSS Custom Properties + CSS Animations
+
+**Telegram Bot:**
+- `pyTelegramBotAPI` — Telegram API
+- `SQLite` — локальная база данных
+- Реферальные ссылки с параметрами фильм/друг/группа
 
 **Android:**
 - `Java` — основной язык
 - `Retrofit 2` — HTTP клиент для Supabase REST API
-- `Glide` — загрузка изображений
-- `Material Design 3` — UI компоненты
-- `ViewBinding` — безопасная работа с View
-
----
-
-## Скриншоты
-
-> Добавьте скриншоты в папку `/docs/screenshots/` и раскомментируйте:
-
-<!--
-| Telegram Bot | Web App | Android |
-|:---:|:---:|:---:|
-| ![Bot](docs/screenshots/bot.png) | ![Web](docs/screenshots/web.png) | ![Android](docs/screenshots/android.png) |
--->
+- `Glide` — загрузка постеров
+- `Material Design 3`
 
 ---
 
 ## Планы развития
 
-- [x] Telegram Bot
-- [x] Реферальная система  
-- [x] Система друзей
+- [x] Telegram Bot с реферальной системой
 - [x] Web App (GitHub Pages + Supabase)
+- [x] Система друзей с инвайт-ссылками
+- [x] Умный алгоритм (приоритет + народный рейтинг + персонализация)
+- [x] Сброс пароля через email
+- [x] Просмотр списка друга
+- [ ] Свайп вверх = "уже смотрел"
+- [ ] Фильтр по жанрам на сегодня
 - [ ] Android приложение
-- [ ] Уведомления о новых фильмах
-- [ ] Интеграция с Кинопоиском API
+- [ ] Уведомления о новых совпадениях с друзьями
 - [ ] Групповые просмотры
 
 ---

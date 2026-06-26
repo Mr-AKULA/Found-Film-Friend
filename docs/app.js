@@ -25,10 +25,11 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 /* ─── App state ─── */
 const state = {
-  user:        null,
-  profile:     null,
-  currentMovie: null,
+  user:          null,
+  profile:       null,
+  currentMovie:  null,
   pendingFriend: null,   // from invite link
+  currentFriend: null,   // { id, name } — open friend panel
 };
 
 /* Force HTTPS so HTTP images aren't blocked on the HTTPS page */
@@ -430,54 +431,108 @@ const App = {
   },
 
   async loadCommonMovies(friendId, friendName) {
-    const panel = $('#common-panel');
-    const grid  = $('#common-grid');
-    const empty = $('#common-empty');
-    $('#common-title').textContent = `Общие с ${friendName}`;
+    state.currentFriend = { id: friendId, name: friendName };
+    const panel   = $('#common-panel');
+    const grid    = $('#common-grid');
+    const empty   = $('#common-empty');
+    const loading = $('#common-loading');
+    $('#common-friend-name').textContent = friendName;
     grid.innerHTML = '';
     hide(empty);
+    show(loading);
     show(panel);
+
+    /* Switch active tab */
+    $$('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'common'));
 
     const uid = state.user.id;
 
-    /* My liked movies */
-    const { data: mine } = await sb
-      .from('actions')
-      .select('movie_id')
-      .eq('user_id', uid)
-      .eq('want_to_watch', true);
-
-    /* Friend's liked movies */
-    const { data: theirs } = await sb
-      .from('actions')
-      .select('movie_id')
-      .eq('user_id', friendId)
-      .eq('want_to_watch', true);
+    const [{ data: mine }, { data: theirs }] = await Promise.all([
+      sb.from('actions').select('movie_id').eq('user_id', uid).eq('want_to_watch', true),
+      sb.from('actions').select('movie_id').eq('user_id', friendId).eq('want_to_watch', true),
+    ]);
 
     const mySet     = new Set((mine   || []).map(a => a.movie_id));
     const theirSet  = new Set((theirs || []).map(a => a.movie_id));
     const commonIds = [...mySet].filter(id => theirSet.has(id));
 
-    if (commonIds.length === 0) { show(empty); return; }
+    if (commonIds.length === 0) {
+      hide(loading);
+      $('#common-empty-text').textContent = 'Нет общих фильмов';
+      $('#common-empty-sub').textContent  = 'Оценивайте больше фильмов — появятся совпадения!';
+      show(empty);
+      return;
+    }
 
-    const { data: movies } = await sb
-      .from('movies')
-      .select('id, name, year, description, slogan, age_rating')
-      .in('id', commonIds);
+    const [{ data: movies }, { data: posters }] = await Promise.all([
+      sb.from('movies').select('id, name, year, description, slogan, age_rating').in('id', commonIds),
+      sb.from('posters').select('movie_id, preview_url').in('movie_id', commonIds),
+    ]);
 
-    const { data: posters } = await sb
-      .from('posters')
-      .select('movie_id, preview_url')
-      .in('movie_id', commonIds);
+    hide(loading);
 
-    const posterMap = {};
-    (posters || []).forEach(p => { posterMap[p.movie_id] = p.preview_url; });
-
+    const posterMap = Object.fromEntries((posters || []).map(p => [p.movie_id, p.preview_url]));
     (movies || []).forEach(m => {
-      const el = createMovieMini(m, posterMap[m.id] || '');
-      el.addEventListener('click', () => openMovieModal(m, posterMap[m.id] || '', false));
+      if (!posterMap[m.id]) return;
+      const el = createMovieMini(m, posterMap[m.id]);
+      el.addEventListener('click', () => openMovieModal(m, posterMap[m.id], false));
       grid.appendChild(el);
     });
+  },
+
+  async loadFriendWatchlist(friendId, friendName) {
+    state.currentFriend = { id: friendId, name: friendName };
+    const grid    = $('#common-grid');
+    const empty   = $('#common-empty');
+    const loading = $('#common-loading');
+    grid.innerHTML = '';
+    hide(empty);
+    show(loading);
+
+    /* Switch active tab */
+    $$('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'friend'));
+
+    const { data: actions } = await sb
+      .from('actions')
+      .select('movie_id')
+      .eq('user_id', friendId)
+      .eq('want_to_watch', true)
+      .order('id', { ascending: false });
+
+    if (!actions || actions.length === 0) {
+      hide(loading);
+      $('#common-empty-text').textContent = 'Пустой список';
+      $('#common-empty-sub').textContent  = `${friendName} ещё ничего не лайкнул`;
+      show(empty);
+      return;
+    }
+
+    const ids = actions.map(a => a.movie_id);
+    const [{ data: movies }, { data: posters }] = await Promise.all([
+      sb.from('movies').select('id, name, year, description, slogan, age_rating').in('id', ids),
+      sb.from('posters').select('movie_id, preview_url').in('movie_id', ids),
+    ]);
+
+    hide(loading);
+
+    const posterMap = Object.fromEntries((posters || []).map(p => [p.movie_id, p.preview_url]));
+    const movieMap  = Object.fromEntries((movies  || []).map(m => [m.id, m]));
+
+    let rendered = 0;
+    ids.forEach(id => {
+      const m = movieMap[id];
+      if (!m || !posterMap[id]) return;
+      rendered++;
+      const el = createMovieMini(m, posterMap[id]);
+      el.addEventListener('click', () => openMovieModal(m, posterMap[id], false));
+      grid.appendChild(el);
+    });
+
+    if (rendered === 0) {
+      $('#common-empty-text').textContent = 'Нет фильмов с постерами';
+      $('#common-empty-sub').textContent  = `Постеры ещё загружаются`;
+      show(empty);
+    }
   },
 };
 
@@ -582,7 +637,7 @@ function createFriendItem(profile) {
     <div class="friend-avatar">${initial}</div>
     <div class="friend-info">
       <div class="friend-name">${escHtml(name)}</div>
-      <div class="friend-sub">Нажмите чтобы увидеть общие фильмы</div>
+      <div class="friend-sub">Общие фильмы и список</div>
     </div>
     <span class="friend-arrow">›</span>`;
   el.addEventListener('click', () => App.loadCommonMovies(profile.id, name));
@@ -778,6 +833,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* Common movies back */
   $('#common-back').addEventListener('click', () => hide($('#common-panel')));
+
+  /* Friend panel tabs */
+  $$('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!state.currentFriend) return;
+      if (btn.dataset.tab === 'common') {
+        App.loadCommonMovies(state.currentFriend.id, state.currentFriend.name);
+      } else {
+        App.loadFriendWatchlist(state.currentFriend.id, state.currentFriend.name);
+      }
+    });
+  });
 
   /* Keyboard shortcuts */
   document.addEventListener('keydown', e => {
