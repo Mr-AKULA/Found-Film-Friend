@@ -438,6 +438,7 @@ async function addFriend(friendId) {
   try { sessionStorage.removeItem('fff_invite'); } catch {}
   showToast('Друг добавлен! 👥');
   history.replaceState({}, '', location.pathname);
+  App.navigate('friends');
 }
 
 /* ══════════════════════════════════════════════

@@ -263,6 +263,7 @@ a:hover { text-decoration: underline; }
   overflow-y: auto;
   padding-bottom: calc(var(--nav-h) + 16px);
   display: none;
+  background: var(--bg);
 }
 .page.active { display: block; }
 
