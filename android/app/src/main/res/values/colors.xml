@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand -->
+    <color name="accent">#7C3AED</color>
+    <color name="accent_light">#A855F7</color>
+    <color name="like_color">#F43F5E</color>
+
+    <!-- Backgrounds -->
+    <color name="bg_primary">#080810</color>
+    <color name="bg_surface">#10101E</color>
+    <color name="bg_card">#1A1A2E</color>
+    <color name="bg_elevated">#22223A</color>
+
+    <!-- Text -->
+    <color name="text_primary">#F0F0F8</color>
+    <color name="text_secondary">#8888AA</color>
+    <color name="text_muted">#44445A</color>
+
+    <!-- Tags -->
+    <color name="gold">#FBBF24</color>
+
+    <!-- System -->
+    <color name="white">#FFFFFF</color>
+    <color name="transparent">#00000000</color>
+
+    <!-- Material theme overrides -->
+    <color name="colorPrimary">#7C3AED</color>
+    <color name="colorPrimaryVariant">#6D28D9</color>
+    <color name="colorSecondary">#F43F5E</color>
+    <color name="colorSurface">#10101E</color>
+    <color name="colorBackground">#080810</color>
+    <color name="colorOnPrimary">#FFFFFF</color>
+    <color name="colorOnBackground">#F0F0F8</color>
+    <color name="colorOnSurface">#F0F0F8</color>
+</resources>

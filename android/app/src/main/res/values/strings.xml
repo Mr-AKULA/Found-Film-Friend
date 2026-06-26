@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Found Film Friend</string>
+    <string name="login">Войти</string>
+    <string name="register">Зарегистрироваться</string>
+    <string name="no_account">Нет аккаунта? Зарегистрироваться</string>
+    <string name="have_account">Уже есть аккаунт? Войти</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_password">Пароль</string>
+    <string name="hint_birthdate">Дата рождения (ГГГГ-ММ-ДД)</string>
+    <string name="btn_like">Хочу посмотреть</string>
+    <string name="btn_dislike">Не интересно</string>
+    <string name="no_movies">Фильмы закончились!\nВозвращайтесь позже.</string>
+    <string name="nav_browse">Смотреть</string>
+    <string name="nav_watchlist">Список</string>
+    <string name="nav_friends">Друзья</string>
+    <string name="copy_invite">Скопировать ссылку</string>
+    <string name="invite_label">Ваша ссылка для приглашения:</string>
+</resources>

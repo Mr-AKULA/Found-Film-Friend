@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.foundfilmfriend'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.foundfilmfriend"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+
+        // Supabase config — замените своими значениями
+        buildConfigField "String", "SUPABASE_URL",      '"https://swgvbagncvbkoyztrimz.supabase.co"'
+        buildConfigField "String", "SUPABASE_ANON_KEY", '"sb_publishable_0NHWJrnl1boP_Ma0hLH9Ew_m684L-5J"'
+    }
+
+    buildFeatures {
+        buildConfig true
+        viewBinding true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // UI
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+
+    // Network — Retrofit + OkHttp + Gson
+    implementation 'com.squareup.retrofit2:retrofit:2.11.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.11.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
+
+    // Image loading
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
+
+    // SharedPreferences encrypted
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+}
