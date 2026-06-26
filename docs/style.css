@@ -443,6 +443,14 @@ a:hover { text-decoration: underline; }
   border-color: var(--accent);
   color: #fff;
 }
+.genre-pill-special {
+  border-color: var(--border-h);
+  font-weight: 600;
+}
+.genre-pill-special.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
 
 /* Action buttons */
 .card-actions {

@@ -244,17 +244,44 @@ function renderGenrePills() {
   if (!container) return;
   container.innerHTML = '';
 
-  const allBtn = document.createElement('button');
-  allBtn.className = 'genre-pill' + (state.selectedGenres.length === 0 ? ' active' : '');
-  allBtn.textContent = 'Все';
-  allBtn.addEventListener('click', () => {
-    state.selectedGenres = [];
+  const multGenre = state.genres.find(g => g.name.toLowerCase() === 'мультфильм');
+  const filmIds   = multGenre ? state.genres.filter(g => g.id !== multGenre.id).map(g => g.id) : [];
+
+  function setFilter(ids) {
+    state.selectedGenres = ids;
     renderGenrePills();
     state.currentMovie = null;
     App.loadNextMovie();
-  });
+  }
+
+  /* ── Все ── */
+  const allBtn = document.createElement('button');
+  allBtn.className = 'genre-pill' + (state.selectedGenres.length === 0 ? ' active' : '');
+  allBtn.textContent = 'Все';
+  allBtn.addEventListener('click', () => setFilter([]));
   container.appendChild(allBtn);
 
+  /* ── Фильмы (всё кроме мультфильмов) ── */
+  if (multGenre && filmIds.length > 0) {
+    const isActive = filmIds.length === state.selectedGenres.length &&
+                     filmIds.every(id => state.selectedGenres.includes(id));
+    const filmsBtn = document.createElement('button');
+    filmsBtn.className = 'genre-pill genre-pill-special' + (isActive ? ' active' : '');
+    filmsBtn.textContent = '🎬 Фильмы';
+    filmsBtn.addEventListener('click', () => setFilter(filmIds));
+    container.appendChild(filmsBtn);
+
+    /* ── Мульты ── */
+    const isMultActive = state.selectedGenres.length === 1 &&
+                         state.selectedGenres[0] === multGenre.id;
+    const multBtn = document.createElement('button');
+    multBtn.className = 'genre-pill genre-pill-special' + (isMultActive ? ' active' : '');
+    multBtn.textContent = '🎨 Мульты';
+    multBtn.addEventListener('click', () => setFilter([multGenre.id]));
+    container.appendChild(multBtn);
+  }
+
+  /* ── Отдельные жанры ── */
   state.genres.forEach(g => {
     const btn = document.createElement('button');
     btn.className = 'genre-pill' + (state.selectedGenres.includes(g.id) ? ' active' : '');
