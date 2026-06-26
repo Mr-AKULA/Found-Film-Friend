@@ -396,7 +396,7 @@ a:hover { text-decoration: underline; }
 .swipe-hint { font-size: 12px; color: var(--muted); letter-spacing: 0.02em; display: none; }
 html.show-hints .swipe-hint { display: block; }
 
-/* Actions group wraps buttons + hint with tight spacing */
+/* Actions group — tight spacing, pinned to bottom of browse-main */
 .actions-group {
   display: flex;
   flex-direction: column;
@@ -404,6 +404,9 @@ html.show-hints .swipe-hint { display: block; }
   gap: 6px;
   width: 100%;
   flex-shrink: 0;
+  margin-top: auto;   /* pushes group to bottom of remaining space */
+  padding-bottom: 8px;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 /* Swipe-down indicator at bottom of poster */
@@ -1072,11 +1075,10 @@ html.show-hints .swipe-hint { display: block; }
 .toggle-btn.on { background: var(--accent); }
 .toggle-btn.on::after { transform: translateX(18px); }
 
-/* Nav auto-hide on browse after first swipe */
-.nav-browse-hidden .bottom-nav {
-  transform: translateY(100%);
-  opacity: 0;
-  pointer-events: none;
+/* Actions shrink while user is dragging the card */
+body.card-dragging .actions-group {
+  transform: scale(0.72) translateY(6px);
+  opacity: 0.45;
 }
 
 /* ══════════════════════════════════════════════

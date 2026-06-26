@@ -786,9 +786,6 @@ const App = {
     const el = $(`#page-${page}`);
     if (el) el.classList.add('active');
 
-    /* Show nav when leaving browse */
-    if (page !== 'browse') document.body.classList.remove('nav-browse-hidden');
-
     if (page === 'watchlist') App.loadWatchlist();
     if (page === 'friends')   App.loadFriends();
     if (page === 'browse' && !state.currentMovie) App.loadNextMovie();
@@ -1324,6 +1321,8 @@ function closeModal() {
     currentX = x - startX;
     currentY = y - startY;
     const absX = Math.abs(currentX), absY = Math.abs(currentY);
+    /* Shrink actions while dragging */
+    if (absX > 10 || absY > 10) document.body.classList.add('card-dragging');
 
     if (currentY < -20 && absY > absX) {
       /* Swipe up — "уже смотрел" */
@@ -1349,19 +1348,11 @@ function closeModal() {
     dragging = false;
     card().style.transform = '';
     card().classList.remove('swiping-right', 'swiping-left', 'swiping-up', 'swiping-down');
-    if (currentX > 80) {
-      document.body.classList.add('nav-browse-hidden');
-      App.rateMovie(true);
-    } else if (currentX < -80) {
-      document.body.classList.add('nav-browse-hidden');
-      App.rateMovie(false);
-    } else if (currentY < -80) {
-      document.body.classList.add('nav-browse-hidden');
-      App.markWatched();
-    } else if (currentY > 80 && Math.abs(currentY) > Math.abs(currentX)) {
-      document.body.classList.remove('nav-browse-hidden');
-      openShareSheet(state.currentMovie);
-    }
+    document.body.classList.remove('card-dragging');
+    if      (currentX > 80)                               App.rateMovie(true);
+    else if (currentX < -80)                              App.rateMovie(false);
+    else if (currentY < -80)                              App.markWatched();
+    else if (currentY > 80 && Math.abs(currentY) > Math.abs(currentX)) openShareSheet(state.currentMovie);
   }
 
   document.addEventListener('touchstart', e => {
