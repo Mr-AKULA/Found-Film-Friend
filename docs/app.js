@@ -267,9 +267,10 @@ function renderGenrePills() {
   filmsBtn.className = 'genre-pill genre-pill-special' + (state.quickFilter === 'films' ? ' active' : '');
   filmsBtn.textContent = '🎬 Фильмы';
   filmsBtn.addEventListener('click', () => {
-    const filmIds = multGenre
-      ? state.genres.filter(g => g.id !== multGenre.id).map(g => g.id)
-      : state.genres.map(g => g.id);
+    const EXCLUDE = ['мульт', 'аниме', 'anime', 'animation'];
+    const filmIds = state.genres
+      .filter(g => !EXCLUDE.some(w => g.name.toLowerCase().includes(w)))
+      .map(g => g.id);
     applyFilter(filmIds, 'films');
   });
   container.appendChild(filmsBtn);
