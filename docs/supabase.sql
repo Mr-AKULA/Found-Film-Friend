@@ -176,31 +176,51 @@ BEGIN
   IF user_age IS NULL THEN user_age := 18; END IF;
 
   RETURN QUERY
+  WITH
+  -- How strongly this user prefers each genre (count of liked movies in it)
+  user_genre_prefs AS (
+    SELECT mg.genre_id, COUNT(*)::FLOAT AS pref
+    FROM public.actions a
+    JOIN public.movie_genres mg ON mg.movie_id = a.movie_id
+    WHERE a.user_id = p_user_id AND a.want_to_watch = true
+    GROUP BY mg.genre_id
+  ),
+  -- Candidate movies with pre-computed scores
+  candidates AS (
+    SELECT
+      m.id,
+      m.name,
+      m.slogan,
+      m.description,
+      m.year,
+      m.age_rating,
+      m.priority,
+      (SELECT p.preview_url FROM public.posters p
+       WHERE p.movie_id = m.id LIMIT 1)                        AS preview_url,
+      (SELECT COUNT(*) FROM public.actions a2
+       WHERE a2.movie_id = m.id
+         AND a2.want_to_watch = true)::FLOAT                   AS like_count,
+      COALESCE((
+        SELECT SUM(ugp.pref)
+        FROM public.movie_genres mg
+        JOIN user_genre_prefs ugp ON ugp.genre_id = mg.genre_id
+        WHERE mg.movie_id = m.id
+      ), 0)                                                     AS genre_score
+    FROM public.movies m
+    WHERE COALESCE(m.age_rating, 0) <= user_age
+      AND m.id NOT IN (
+        SELECT a.movie_id FROM public.actions a WHERE a.user_id = p_user_id
+      )
+      AND EXISTS (SELECT 1 FROM public.posters p WHERE p.movie_id = m.id)
+  )
   SELECT
-    m.id,
-    m.name,
-    m.slogan,
-    m.description,
-    m.year,
-    m.age_rating,
-    m.priority,
-    (SELECT p.preview_url FROM public.posters p
-     WHERE p.movie_id = m.id LIMIT 1) AS preview_url
-  FROM public.movies m
-  WHERE
-    COALESCE(m.age_rating, 0) <= user_age
-    AND m.id NOT IN (
-      SELECT a.movie_id FROM public.actions a WHERE a.user_id = p_user_id
-    )
-    AND EXISTS (
-      SELECT 1 FROM public.posters p WHERE p.movie_id = m.id
-    )
+    c.id, c.name, c.slogan, c.description,
+    c.year, c.age_rating, c.priority, c.preview_url
+  FROM candidates c
   ORDER BY RANDOM() * POWER(10,
-    COALESCE(m.priority, 1)::FLOAT
-    + LOG(1 + (
-        SELECT COUNT(*) FROM public.actions a2
-        WHERE a2.movie_id = m.id AND a2.want_to_watch = true
-      ))::FLOAT
+    COALESCE(c.priority, 1)::FLOAT   -- admin quality signal
+    + LOG(1 + c.like_count)          -- community popularity
+    + LOG(1 + c.genre_score)         -- personal taste
   ) DESC
   LIMIT 1;
 END;
