@@ -537,8 +537,10 @@ function getMovieShareUrl(movieId) {
 }
 
 function openShareSheet(movie) {
+  if (!movie) return;
   state.sharingMovie = movie;
-  $('#share-movie-name').textContent = `«${movie.name}»`;
+  const nameEl = $('#share-movie-name');
+  if (nameEl) nameEl.textContent = `«${movie.name}»`;
   /* Show native share button only if API available */
   toggle($('#share-native-btn'), !!navigator.share);
   show($('#share-sheet'));
@@ -1268,7 +1270,8 @@ async function openMovieModal(movie, posterUrl, showRemove) {
   }
 
   /* Share button handler */
-  $('#modal-share-btn').onclick = () => openShareSheet(movie);
+  const shareBtn = $('#modal-share-btn');
+  if (shareBtn) shareBtn.onclick = () => openShareSheet(movie);
 
   /* Remove button handler */
   const removeBtn = $('#modal-remove-btn');
