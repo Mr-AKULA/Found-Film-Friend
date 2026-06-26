@@ -13,16 +13,14 @@ const SUPABASE_URL     = 'https://swgvbagncvbkoyztrimz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_0NHWJrnl1boP_Ma0hLH9Ew_m684L-5J';
 
 /* ─── Supabase client ─── */
-/* Custom storage: falls back to in-memory when localStorage is blocked
-   (Firefox Enhanced Tracking Protection blocks storage from CDN scripts) */
-const _mem = {};
-const _storage = {
-  getItem:    k => { try { return localStorage.getItem(k);    } catch { return _mem[k] ?? null; } },
-  setItem:    (k,v) => { try { localStorage.setItem(k, v);   } catch { _mem[k] = v; } },
-  removeItem: k => { try { localStorage.removeItem(k);        } catch { delete _mem[k]; } },
-};
+/* persistSession:false keeps session in JS memory only — avoids 401 errors
+   caused by Firefox/Edge Tracking Prevention silently blocking localStorage */
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { storage: _storage, persistSession: true, autoRefreshToken: true },
+  auth: {
+    persistSession: false,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
 });
 
 /* ─── App state ─── */
