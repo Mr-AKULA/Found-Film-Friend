@@ -1,4 +1,4 @@
-const CACHE = 'fff-v2';
+const CACHE = 'fff-v3';
 const STATIC = [
   '/Found-Film-Friend/',
   '/Found-Film-Friend/index.html',

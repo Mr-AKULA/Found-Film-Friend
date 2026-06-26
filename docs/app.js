@@ -244,7 +244,7 @@ function renderGenrePills() {
   if (!container) return;
   container.innerHTML = '';
 
-  const multGenre = state.genres.find(g => g.name.toLowerCase() === 'мультфильм');
+  const multGenre = state.genres.find(g => g.name.toLowerCase().includes('мульт'));
   const filmIds   = multGenre ? state.genres.filter(g => g.id !== multGenre.id).map(g => g.id) : [];
 
   function setFilter(ids) {
