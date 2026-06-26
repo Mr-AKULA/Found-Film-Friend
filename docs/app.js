@@ -335,10 +335,16 @@ function renderGenrePills() {
     btn.className = 'genre-pill' + (state.quickFilter === null && state.selectedGenres.includes(g.id) ? ' active' : '');
     btn.textContent = g.name;
     btn.addEventListener('click', () => {
-      state.quickFilter = null;
-      const idx = state.selectedGenres.indexOf(g.id);
-      if (idx === -1) state.selectedGenres.push(g.id);
-      else            state.selectedGenres.splice(idx, 1);
+      if (state.quickFilter !== null || state.excludeGenres.length > 0) {
+        /* Was in quick-filter mode — start fresh with just this genre */
+        state.quickFilter   = null;
+        state.excludeGenres = [];
+        state.selectedGenres = [g.id];
+      } else {
+        const idx = state.selectedGenres.indexOf(g.id);
+        if (idx === -1) state.selectedGenres.push(g.id);
+        else            state.selectedGenres.splice(idx, 1);
+      }
       renderGenrePills();
       state.currentMovie = null;
       App.loadNextMovie();
@@ -650,16 +656,8 @@ async function loadRecommendations() {
     const poster = posterMap[rec.movie_id];
     const sender = senderMap[rec.from_user] || 'Друг';
     const el = createRecItem(m, poster, sender, rec.seen);
-    el.addEventListener('click', async () => {
-      openMovieModal(m, poster || '', false);
-      /* Mark seen */
-      if (!rec.seen) {
-        await sb.from('recommendations').update({ seen: true }).eq('id', rec.id);
-        el.classList.add('rec-seen');
-        rec.seen = true;
-        const newUnread = recs.filter(r => !r.seen).length;
-        updateRecBadge(newUnread);
-      }
+    el.addEventListener('click', () => {
+      openMovieModal(m, poster || '', false, rec.id);
     });
     grid.appendChild(el);
   });
@@ -792,6 +790,9 @@ const App = {
     });
     const el = $(`#page-${page}`);
     if (el) el.classList.add('active');
+
+    /* Show nav when leaving browse */
+    if (page !== 'browse') document.body.classList.remove('nav-browse-hidden');
 
     if (page === 'watchlist') App.loadWatchlist();
     if (page === 'friends')   App.loadFriends();
@@ -1224,7 +1225,7 @@ function createFriendItem(profile) {
 /* ══════════════════════════════════════════════
    MOVIE MODAL
 ══════════════════════════════════════════════ */
-async function openMovieModal(movie, posterUrl, showRemove) {
+async function openMovieModal(movie, posterUrl, showRemove, recId = null) {
   const modalImg = $('#modal-poster');
   modalImg.src = posterUrl ? safeImgUrl(posterUrl) : '';
   modalImg.onerror = () => hide(modalImg);
@@ -1239,6 +1240,24 @@ async function openMovieModal(movie, posterUrl, showRemove) {
   toggle($('#modal-age'),     !!movie.age_rating);
   toggle($('#modal-tagline'), !!movie.slogan);
   toggle($('#modal-remove-btn'), showRemove);
+
+  /* Rate row — shown only when opened from a recommendation */
+  const rateRow = $('#modal-rate-row');
+  toggle(rateRow, recId !== null);
+  if (recId !== null) {
+    const doRate = async (wantToWatch, watched) => {
+      await sb.from('actions').upsert(
+        { user_id: state.user.id, movie_id: movie.id, want_to_watch: wantToWatch, watched },
+        { onConflict: 'user_id,movie_id' }
+      );
+      await sb.from('recommendations').delete().eq('id', recId);
+      closeModal();
+      loadRecommendations();
+    };
+    $('#modal-rate-like').onclick    = () => doRate(true,  false);
+    $('#modal-rate-watched').onclick  = () => doRate(false, true);
+    $('#modal-rate-dislike').onclick  = () => doRate(false, false);
+  }
 
   /* Duration */
   const durEl = $('#modal-duration');
@@ -1335,10 +1354,19 @@ function closeModal() {
     dragging = false;
     card().style.transform = '';
     card().classList.remove('swiping-right', 'swiping-left', 'swiping-up', 'swiping-down');
-    if      (currentX > 80)                               App.rateMovie(true);
-    else if (currentX < -80)                              App.rateMovie(false);
-    else if (currentY < -80)                              App.markWatched();
-    else if (currentY > 80 && Math.abs(currentY) > Math.abs(currentX)) openShareSheet(state.currentMovie);
+    if (currentX > 80) {
+      document.body.classList.add('nav-browse-hidden');
+      App.rateMovie(true);
+    } else if (currentX < -80) {
+      document.body.classList.add('nav-browse-hidden');
+      App.rateMovie(false);
+    } else if (currentY < -80) {
+      document.body.classList.add('nav-browse-hidden');
+      App.markWatched();
+    } else if (currentY > 80 && Math.abs(currentY) > Math.abs(currentX)) {
+      document.body.classList.remove('nav-browse-hidden');
+      openShareSheet(state.currentMovie);
+    }
   }
 
   document.addEventListener('touchstart', e => {

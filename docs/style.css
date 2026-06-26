@@ -283,6 +283,7 @@ a:hover { text-decoration: underline; }
   border-top: 1px solid var(--border);
   flex-shrink: 0;
   z-index: 10;
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
 }
 
 .nav-btn {
@@ -1070,6 +1071,23 @@ html.show-hints .swipe-hint { display: block; }
 }
 .toggle-btn.on { background: var(--accent); }
 .toggle-btn.on::after { transform: translateX(18px); }
+
+/* Nav auto-hide on browse after first swipe */
+.nav-browse-hidden .bottom-nav {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════
+   MODAL RATE ROW (for recommendations)
+══════════════════════════════════════════════ */
+.modal-rate-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.modal-rate-row .btn { flex: 1; min-width: 0; font-size: 13px; padding: 10px 6px; }
 
 /* ══════════════════════════════════════════════
    MODAL ACTION ROW (share + remove buttons)
