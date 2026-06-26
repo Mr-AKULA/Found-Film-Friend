@@ -124,10 +124,17 @@
             <div id="genre-pills" class="genre-pills"></div>
           </div>
 
-          <div id="movie-card" class="movie-card">
+          <div id="movie-card" class="movie-card" style="position:relative">
             <div class="card-poster-wrap">
               <img id="card-poster" class="card-poster" src="" alt="" referrerpolicy="no-referrer">
               <div class="card-poster-gradient"></div>
+              <button id="card-share-btn" class="card-share-btn" title="Поделиться фильмом">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                </svg>
+              </button>
             </div>
             <div class="card-content">
               <div class="card-tags">
@@ -158,7 +165,6 @@
               </svg>
             </button>
           </div>
-
           <p class="swipe-hint">← скип · 👁 смотрел · ❤️ хочу →</p>
         </div>
 
@@ -202,6 +208,19 @@
             <button id="copy-btn" class="btn-copy">Копировать</button>
           </div>
         </div>
+        <!-- Рекомендации от друзей -->
+        <div id="rec-section" class="rec-section hidden">
+          <h3 class="rec-section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            Рекомендуют тебе
+          </h3>
+          <div id="rec-grid" class="rec-grid"></div>
+        </div>
+
         <div id="friends-list" class="friends-list"></div>
         <div id="friends-loading" class="state hidden"><div class="spinner"></div></div>
         <div id="friends-empty" class="state hidden">
@@ -247,10 +266,13 @@
         <span>Список</span>
       </button>
       <button class="nav-btn" data-page="friends">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-        </svg>
+        <div class="nav-icon-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span id="rec-badge" class="nav-badge hidden">0</span>
+        </div>
         <span>Друзья</span>
       </button>
     </nav>
@@ -276,7 +298,17 @@
           <h4 class="modal-section-label">Где посмотреть</h4>
           <div id="modal-watch-links" class="watch-links"></div>
         </div>
-        <button id="modal-remove-btn" class="btn btn-danger">Убрать из списка</button>
+        <div class="modal-action-row">
+          <button id="modal-remove-btn" class="btn btn-danger">Убрать из списка</button>
+          <button id="modal-share-btn" class="btn btn-secondary btn-icon-text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            Рекомендовать
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -319,6 +351,56 @@
       <p class="onboarding-sub">Выбери жанры — покажем подходящее сразу</p>
       <div id="onboarding-genres" class="onboarding-genres"></div>
       <button id="onboarding-done" class="btn btn-primary" style="margin-top:20px;width:100%">Начать →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════ SHARE SHEET ══════════════ -->
+  <div id="share-sheet" class="bottom-sheet hidden" role="dialog" aria-modal="true">
+    <div class="bottom-sheet-overlay" id="share-overlay"></div>
+    <div class="bottom-sheet-inner">
+      <div class="bottom-sheet-handle"></div>
+      <p class="bottom-sheet-title">Поделиться</p>
+      <p id="share-movie-name" class="share-movie-name"></p>
+      <div class="share-options">
+        <button id="share-friend-btn" class="share-opt">
+          <span class="share-opt-icon">👥</span>
+          <div>
+            <div class="share-opt-label">Другу в FFF</div>
+            <div class="share-opt-sub">Отправить рекомендацию</div>
+          </div>
+        </button>
+        <button id="share-copy-btn" class="share-opt">
+          <span class="share-opt-icon">🔗</span>
+          <div>
+            <div class="share-opt-label">Скопировать ссылку</div>
+            <div class="share-opt-sub">Поделиться вне приложения</div>
+          </div>
+        </button>
+        <button id="share-native-btn" class="share-opt hidden">
+          <span class="share-opt-icon">↗️</span>
+          <div>
+            <div class="share-opt-label">Поделиться…</div>
+            <div class="share-opt-sub">Через мессенджер или соцсеть</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ FRIEND PICKER ══════════════ -->
+  <div id="friend-picker" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-overlay" id="picker-overlay"></div>
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <button class="modal-close" id="picker-close">✕</button>
+      <div class="modal-body" style="padding-top:8px">
+        <h3 class="modal-title">Кому отправить?</h3>
+        <div id="picker-list"></div>
+        <div id="picker-empty" class="state hidden">
+          <div class="state-icon">👥</div>
+          <p>Нет друзей — сначала добавь их</p>
+        </div>
+      </div>
     </div>
   </div>
 
