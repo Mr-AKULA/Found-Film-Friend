@@ -155,8 +155,9 @@ CREATE POLICY "Users update own friends"  ON public.friends FOR UPDATE USING (au
 -- ══════════════════════════════════════════════════════
 
 CREATE OR REPLACE FUNCTION public.get_next_movie(
-  p_user_id   UUID,
-  p_genre_ids INTEGER[] DEFAULT NULL   -- NULL = no genre filter
+  p_user_id           UUID,
+  p_genre_ids         INTEGER[] DEFAULT NULL,
+  p_exclude_genre_ids INTEGER[] DEFAULT NULL
 )
 RETURNS TABLE (
   id           INTEGER,
@@ -212,6 +213,10 @@ BEGIN
       AND (p_genre_ids IS NULL OR EXISTS (
         SELECT 1 FROM public.movie_genres mg2
         WHERE mg2.movie_id = m.id AND mg2.genre_id = ANY(p_genre_ids)
+      ))
+      AND (p_exclude_genre_ids IS NULL OR NOT EXISTS (
+        SELECT 1 FROM public.movie_genres mg3
+        WHERE mg3.movie_id = m.id AND mg3.genre_id = ANY(p_exclude_genre_ids)
       ))
   )
   SELECT

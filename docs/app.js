@@ -31,7 +31,8 @@ const state = {
   pendingFriend:  null,   // from invite link
   currentFriend:  null,   // { id, name } — open friend panel
   genres:         [],     // all genres from DB
-  selectedGenres: [],     // genre IDs active in filter
+  selectedGenres: [],     // genre IDs to include (p_genre_ids)
+  excludeGenres:  [],     // genre IDs to exclude (p_exclude_genre_ids)
   quickFilter:    null,   // 'films' | 'mults' | null
   lastAction:     null,   // { movie, type } — for undo
 };
@@ -247,8 +248,14 @@ function renderGenrePills() {
 
   const multGenre = state.genres.find(g => g.name.toLowerCase().includes('мульт'));
 
-  function applyFilter(ids, qf) {
-    state.selectedGenres = ids;
+  const ANIM_WORDS = ['мульт', 'аниме', 'anime', 'animation'];
+  const animIds = state.genres
+    .filter(g => ANIM_WORDS.some(w => g.name.toLowerCase().includes(w)))
+    .map(g => g.id);
+
+  function applyFilter({ include = [], exclude = [], qf = null } = {}) {
+    state.selectedGenres = include;
+    state.excludeGenres  = exclude;
     state.quickFilter    = qf;
     renderGenrePills();
     state.currentMovie = null;
@@ -259,30 +266,21 @@ function renderGenrePills() {
   const allBtn = document.createElement('button');
   allBtn.className = 'genre-pill' + (state.quickFilter === null && state.selectedGenres.length === 0 ? ' active' : '');
   allBtn.textContent = 'Все';
-  allBtn.addEventListener('click', () => applyFilter([], null));
+  allBtn.addEventListener('click', () => applyFilter());
   container.appendChild(allBtn);
 
-  /* ── 🎬 Фильмы ── */
+  /* ── 🎬 Фильмы (exclude мульт+аниме) ── */
   const filmsBtn = document.createElement('button');
   filmsBtn.className = 'genre-pill genre-pill-special' + (state.quickFilter === 'films' ? ' active' : '');
   filmsBtn.textContent = '🎬 Фильмы';
-  filmsBtn.addEventListener('click', () => {
-    const EXCLUDE = ['мульт', 'аниме', 'anime', 'animation'];
-    const filmIds = state.genres
-      .filter(g => !EXCLUDE.some(w => g.name.toLowerCase().includes(w)))
-      .map(g => g.id);
-    applyFilter(filmIds, 'films');
-  });
+  filmsBtn.addEventListener('click', () => applyFilter({ exclude: animIds, qf: 'films' }));
   container.appendChild(filmsBtn);
 
-  /* ── 🎨 Мульты ── */
+  /* ── 🎨 Мульты (include мульт+аниме) ── */
   const multBtn = document.createElement('button');
   multBtn.className = 'genre-pill genre-pill-special' + (state.quickFilter === 'mults' ? ' active' : '');
   multBtn.textContent = '🎨 Мульты';
-  multBtn.addEventListener('click', () => {
-    const ids = multGenre ? [multGenre.id] : [];
-    applyFilter(ids, 'mults');
-  });
+  multBtn.addEventListener('click', () => applyFilter({ include: animIds, qf: 'mults' }));
   container.appendChild(multBtn);
 
   /* ── Отдельные жанры ── */
@@ -444,7 +442,8 @@ const App = {
 
       /* Try the RPC function first */
       const rpcParams = { p_user_id: state.user.id };
-      if (state.selectedGenres.length > 0) rpcParams.p_genre_ids = state.selectedGenres;
+      if (state.selectedGenres.length > 0) rpcParams.p_genre_ids         = state.selectedGenres;
+      if (state.excludeGenres.length  > 0) rpcParams.p_exclude_genre_ids = state.excludeGenres;
       const { data: rpcData, error: rpcError } = await sb.rpc('get_next_movie', rpcParams);
 
       if (!rpcError && rpcData && rpcData.length > 0) {
