@@ -161,18 +161,56 @@ const App = {
     show($('#browse-loading'));
 
     try {
-      const { data, error } = await sb.rpc('get_next_movie', { p_user_id: state.user.id });
+      let movie = null;
+
+      /* Try the RPC function first */
+      const { data: rpcData, error: rpcError } = await sb.rpc('get_next_movie', { p_user_id: state.user.id });
+
+      if (!rpcError && rpcData && rpcData.length > 0) {
+        movie = rpcData[0];
+      } else {
+        /* RPC failed — log and use direct query as fallback */
+        if (rpcError) console.error('[FFF] RPC get_next_movie error:', rpcError.message, rpcError);
+
+        const { data: rated } = await sb
+          .from('actions')
+          .select('movie_id')
+          .eq('user_id', state.user.id);
+
+        const ratedIds = (rated || []).map(r => r.movie_id);
+
+        let q = sb
+          .from('movies')
+          .select('id, name, slogan, description, year, age_rating, priority, posters(preview_url)')
+          .order('priority', { ascending: false })
+          .limit(50);
+
+        if (ratedIds.length > 0) {
+          q = q.not('id', 'in', `(${ratedIds.join(',')})`);
+        }
+
+        const { data: movies, error: mErr } = await q;
+        if (mErr) console.error('[FFF] Movies fallback error:', mErr.message);
+
+        if (movies && movies.length > 0) {
+          const idx = Math.floor(Math.random() * movies.length);
+          const m = movies[idx];
+          movie = { ...m, preview_url: m.posters?.[0]?.preview_url || null };
+        }
+      }
+
       hide($('#browse-loading'));
 
-      if (error || !data || data.length === 0) {
+      if (!movie) {
         show($('#browse-empty'));
         return;
       }
 
-      state.currentMovie = data[0];
-      renderMovieCard(data[0]);
+      state.currentMovie = movie;
+      renderMovieCard(movie);
       show($('#browse-main'));
     } catch (e) {
+      console.error('[FFF] loadNextMovie exception:', e);
       hide($('#browse-loading'));
       show($('#browse-empty'));
     }

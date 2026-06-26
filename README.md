@@ -8,9 +8,9 @@
 [![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://core.telegram.org/bots)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
 [![Android](https://img.shields.io/badge/Android-Java-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
-[![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-Live-222?style=for-the-badge&logo=github&logoColor=white)](https://mr-akula.github.io/Found_Film_Friend/)
+[![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-Live-222?style=for-the-badge&logo=github&logoColor=white)](https://mr-akula.github.io/Found-Film-Friend/)
 
-[🌐 Открыть веб-версию](https://mr-akula.github.io/Found_Film_Friend/) • [🤖 Открыть в Telegram](https://t.me/MrAKULA_bot) • [📱 Скачать APK](../../releases)
+[🌐 Открыть веб-версию](https://mr-akula.github.io/Found-Film-Friend/) • [🤖 Открыть в Telegram](https://t.me/MrAKULA_bot) • [📱 Скачать APK](../../releases)
 
 </div>
 
@@ -59,8 +59,8 @@ main           — стабильная версия
 
 ```bash
 # 1. Клонируем репозиторий
-git clone https://github.com/Mr-AKULA/Found_Film_Friend.git
-cd Found_Film_Friend
+git clone https://github.com/Mr-AKULA/Found-Film-Friend.git
+cd Found-Film-Friend
 
 # 2. Устанавливаем зависимости
 pip install -r requirements.txt
