@@ -192,6 +192,9 @@ BEGIN
     AND m.id NOT IN (
       SELECT a.movie_id FROM public.actions a WHERE a.user_id = p_user_id
     )
+    AND EXISTS (
+      SELECT 1 FROM public.posters p WHERE p.movie_id = m.id
+    )
   ORDER BY RANDOM() * POWER(10, COALESCE(m.priority, 1)::FLOAT) DESC
   LIMIT 1;
 END;

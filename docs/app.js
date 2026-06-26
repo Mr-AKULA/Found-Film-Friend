@@ -252,9 +252,11 @@ const App = {
         if (mErr) console.error('[FFF] Movies fallback error:', mErr.message);
 
         if (movies && movies.length > 0) {
-          const idx = Math.floor(Math.random() * movies.length);
-          const m = movies[idx];
-          movie = { ...m, preview_url: m.posters?.[0]?.preview_url || null };
+          const withPoster = movies.filter(m => m.posters?.[0]?.preview_url);
+          if (withPoster.length > 0) {
+            const m = withPoster[Math.floor(Math.random() * withPoster.length)];
+            movie = { ...m, preview_url: m.posters[0].preview_url };
+          }
         }
       }
 
@@ -341,14 +343,18 @@ const App = {
     const movieMap  = Object.fromEntries((movies  || []).map(m => [m.id, m]));
     const posterMap = Object.fromEntries((posters || []).map(p => [p.movie_id, p.preview_url]));
 
+    let rendered = 0;
     ids.forEach(id => {
       const m = movieMap[id];
       if (!m) return;
-      const poster = posterMap[id] || '';
+      const poster = posterMap[id];
+      if (!poster) return; /* skip movies with no poster */
+      rendered++;
       const el = createMovieMini(m, poster);
       el.addEventListener('click', () => openMovieModal(m, poster, true));
       grid.appendChild(el);
     });
+    if (rendered === 0) show(empty);
   },
 
   /* ─── FRIENDS ─── */
