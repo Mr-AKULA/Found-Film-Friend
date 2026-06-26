@@ -32,6 +32,7 @@ const state = {
   currentFriend:  null,   // { id, name } — open friend panel
   genres:         [],     // all genres from DB
   selectedGenres: [],     // genre IDs active in filter
+  quickFilter:    null,   // 'films' | 'mults' | null
   lastAction:     null,   // { movie, type } — for undo
 };
 
@@ -245,10 +246,10 @@ function renderGenrePills() {
   container.innerHTML = '';
 
   const multGenre = state.genres.find(g => g.name.toLowerCase().includes('мульт'));
-  const filmIds   = multGenre ? state.genres.filter(g => g.id !== multGenre.id).map(g => g.id) : [];
 
-  function setFilter(ids) {
+  function applyFilter(ids, qf) {
     state.selectedGenres = ids;
+    state.quickFilter    = qf;
     renderGenrePills();
     state.currentMovie = null;
     App.loadNextMovie();
@@ -256,37 +257,40 @@ function renderGenrePills() {
 
   /* ── Все ── */
   const allBtn = document.createElement('button');
-  allBtn.className = 'genre-pill' + (state.selectedGenres.length === 0 ? ' active' : '');
+  allBtn.className = 'genre-pill' + (state.quickFilter === null && state.selectedGenres.length === 0 ? ' active' : '');
   allBtn.textContent = 'Все';
-  allBtn.addEventListener('click', () => setFilter([]));
+  allBtn.addEventListener('click', () => applyFilter([], null));
   container.appendChild(allBtn);
 
-  /* ── Фильмы (всё кроме мультфильмов) ── */
-  if (multGenre && filmIds.length > 0) {
-    const isActive = filmIds.length === state.selectedGenres.length &&
-                     filmIds.every(id => state.selectedGenres.includes(id));
-    const filmsBtn = document.createElement('button');
-    filmsBtn.className = 'genre-pill genre-pill-special' + (isActive ? ' active' : '');
-    filmsBtn.textContent = '🎬 Фильмы';
-    filmsBtn.addEventListener('click', () => setFilter(filmIds));
-    container.appendChild(filmsBtn);
+  /* ── 🎬 Фильмы ── */
+  const filmsBtn = document.createElement('button');
+  filmsBtn.className = 'genre-pill genre-pill-special' + (state.quickFilter === 'films' ? ' active' : '');
+  filmsBtn.textContent = '🎬 Фильмы';
+  filmsBtn.addEventListener('click', () => {
+    const filmIds = multGenre
+      ? state.genres.filter(g => g.id !== multGenre.id).map(g => g.id)
+      : state.genres.map(g => g.id);
+    applyFilter(filmIds, 'films');
+  });
+  container.appendChild(filmsBtn);
 
-    /* ── Мульты ── */
-    const isMultActive = state.selectedGenres.length === 1 &&
-                         state.selectedGenres[0] === multGenre.id;
-    const multBtn = document.createElement('button');
-    multBtn.className = 'genre-pill genre-pill-special' + (isMultActive ? ' active' : '');
-    multBtn.textContent = '🎨 Мульты';
-    multBtn.addEventListener('click', () => setFilter([multGenre.id]));
-    container.appendChild(multBtn);
-  }
+  /* ── 🎨 Мульты ── */
+  const multBtn = document.createElement('button');
+  multBtn.className = 'genre-pill genre-pill-special' + (state.quickFilter === 'mults' ? ' active' : '');
+  multBtn.textContent = '🎨 Мульты';
+  multBtn.addEventListener('click', () => {
+    const ids = multGenre ? [multGenre.id] : [];
+    applyFilter(ids, 'mults');
+  });
+  container.appendChild(multBtn);
 
   /* ── Отдельные жанры ── */
   state.genres.forEach(g => {
     const btn = document.createElement('button');
-    btn.className = 'genre-pill' + (state.selectedGenres.includes(g.id) ? ' active' : '');
+    btn.className = 'genre-pill' + (state.quickFilter === null && state.selectedGenres.includes(g.id) ? ' active' : '');
     btn.textContent = g.name;
     btn.addEventListener('click', () => {
+      state.quickFilter = null;
       const idx = state.selectedGenres.indexOf(g.id);
       if (idx === -1) state.selectedGenres.push(g.id);
       else            state.selectedGenres.splice(idx, 1);

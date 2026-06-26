@@ -1,9 +1,8 @@
-const CACHE = 'fff-v3';
+const CACHE = 'fff-v4';
+/* Only cache the shell — JS/CSS fetched fresh each time so updates apply instantly */
 const STATIC = [
   '/Found-Film-Friend/',
   '/Found-Film-Friend/index.html',
-  '/Found-Film-Friend/style.css',
-  '/Found-Film-Friend/app.js',
   '/Found-Film-Friend/manifest.json',
 ];
 
