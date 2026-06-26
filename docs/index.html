@@ -128,13 +128,12 @@
             <div class="card-poster-wrap">
               <img id="card-poster" class="card-poster" src="" alt="" referrerpolicy="no-referrer">
               <div class="card-poster-gradient"></div>
-              <button id="card-share-btn" class="card-share-btn" title="Поделиться фильмом">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                  <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              <!-- swipe-down indicator -->
+              <div class="swipe-down-hint">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <polyline points="6 9 12 15 18 9"/>
                 </svg>
-              </button>
+              </div>
             </div>
             <div class="card-content">
               <div class="card-tags">
@@ -147,25 +146,27 @@
             </div>
           </div>
 
-          <div class="card-actions">
-            <button id="dislike-btn" class="action-btn action-dislike" title="Не интересно">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
-            <button id="watched-btn" class="action-btn action-watched" title="Уже смотрел">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            </button>
-            <button id="like-btn" class="action-btn action-like" title="Хочу посмотреть">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-            </button>
+          <div class="actions-group">
+            <div class="card-actions">
+              <button id="dislike-btn" class="action-btn action-dislike" title="Не интересно">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+              <button id="watched-btn" class="action-btn action-watched" title="Уже смотрел">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+              <button id="like-btn" class="action-btn action-like" title="Хочу посмотреть">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </button>
+            </div>
+            <p class="swipe-hint">← скип · 👁 смотрел · ❤️ хочу →</p>
           </div>
-          <p class="swipe-hint">← скип · 👁 смотрел · ❤️ хочу →</p>
         </div>
 
         <div id="browse-loading" class="state hidden">
@@ -397,6 +398,18 @@
         <div class="lang-row">
           <button class="lang-btn" data-lang="ru">🇷🇺 Русский</button>
           <button class="lang-btn" data-lang="en">🇬🇧 English</button>
+        </div>
+      </div>
+
+      <!-- Interface toggles -->
+      <div class="settings-section">
+        <div class="settings-section-title">Интерфейс</div>
+        <div class="settings-toggle-item">
+          <div class="settings-toggle-info">
+            <div class="settings-toggle-label">Подсказки жестов</div>
+            <div class="settings-toggle-desc">← скип · 👁 смотрел · ❤️ хочу →</div>
+          </div>
+          <button id="hints-toggle" class="toggle-btn" aria-label="Подсказки жестов"></button>
         </div>
       </div>
 
