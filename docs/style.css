@@ -411,16 +411,19 @@ a:hover { text-decoration: underline; }
 
 /* Genre filter */
 .genre-filter {
-  padding: 0 16px 8px;
-  overflow: hidden;
+  width: 100%;
+  padding: 0 0 8px;
 }
 .genre-pills {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding: 0 16px 4px;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  cursor: grab;
 }
+.genre-pills:active { cursor: grabbing; }
 .genre-pills::-webkit-scrollbar { display: none; }
 .genre-pill {
   flex-shrink: 0;

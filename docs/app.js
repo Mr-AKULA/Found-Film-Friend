@@ -951,6 +951,29 @@ function closeModal() {
 })();
 
 /* ══════════════════════════════════════════════
+   GENRE PILLS DRAG-TO-SCROLL (mouse)
+══════════════════════════════════════════════ */
+(function initPillsDrag() {
+  document.addEventListener('DOMContentLoaded', () => {
+    const el = $('#genre-pills');
+    if (!el) return;
+    let isDown = false, startX = 0, scrollLeft = 0;
+    el.addEventListener('mousedown', e => {
+      isDown = true;
+      startX = e.pageX - el.offsetLeft;
+      scrollLeft = el.scrollLeft;
+      el.style.userSelect = 'none';
+    });
+    document.addEventListener('mouseup',   () => { isDown = false; el.style.userSelect = ''; });
+    document.addEventListener('mousemove', e => {
+      if (!isDown) return;
+      e.preventDefault();
+      el.scrollLeft = scrollLeft - (e.pageX - el.offsetLeft - startX);
+    });
+  });
+})();
+
+/* ══════════════════════════════════════════════
    EVENT LISTENERS
 ══════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
