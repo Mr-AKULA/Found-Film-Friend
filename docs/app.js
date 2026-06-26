@@ -25,11 +25,13 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 /* ─── App state ─── */
 const state = {
-  user:          null,
-  profile:       null,
-  currentMovie:  null,
-  pendingFriend: null,   // from invite link
-  currentFriend: null,   // { id, name } — open friend panel
+  user:           null,
+  profile:        null,
+  currentMovie:   null,
+  pendingFriend:  null,   // from invite link
+  currentFriend:  null,   // { id, name } — open friend panel
+  genres:         [],     // all genres from DB
+  selectedGenres: [],     // genre IDs active in filter
 };
 
 /* Force HTTPS so HTTP images aren't blocked on the HTTPS page */
@@ -145,7 +147,47 @@ async function onSignedIn(user) {
 
   showScreen('app');
   App.navigate('browse');
+  loadGenres();
   App.loadNextMovie();
+}
+
+async function loadGenres() {
+  const { data } = await sb.from('genres').select('id, name').order('name');
+  if (!data) return;
+  state.genres = data;
+  renderGenrePills();
+}
+
+function renderGenrePills() {
+  const container = $('#genre-pills');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const allBtn = document.createElement('button');
+  allBtn.className = 'genre-pill' + (state.selectedGenres.length === 0 ? ' active' : '');
+  allBtn.textContent = 'Все';
+  allBtn.addEventListener('click', () => {
+    state.selectedGenres = [];
+    renderGenrePills();
+    state.currentMovie = null;
+    App.loadNextMovie();
+  });
+  container.appendChild(allBtn);
+
+  state.genres.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'genre-pill' + (state.selectedGenres.includes(g.id) ? ' active' : '');
+    btn.textContent = g.name;
+    btn.addEventListener('click', () => {
+      const idx = state.selectedGenres.indexOf(g.id);
+      if (idx === -1) state.selectedGenres.push(g.id);
+      else            state.selectedGenres.splice(idx, 1);
+      renderGenrePills();
+      state.currentMovie = null;
+      App.loadNextMovie();
+    });
+    container.appendChild(btn);
+  });
 }
 
 async function handleLogin() {
@@ -254,7 +296,9 @@ const App = {
       let movie = null;
 
       /* Try the RPC function first */
-      const { data: rpcData, error: rpcError } = await sb.rpc('get_next_movie', { p_user_id: state.user.id });
+      const rpcParams = { p_user_id: state.user.id };
+      if (state.selectedGenres.length > 0) rpcParams.p_genre_ids = state.selectedGenres;
+      const { data: rpcData, error: rpcError } = await sb.rpc('get_next_movie', rpcParams);
 
       if (!rpcError && rpcData && rpcData.length > 0) {
         movie = rpcData[0];
@@ -313,20 +357,39 @@ const App = {
     const movieId = state.currentMovie.id;
     const card = $('#movie-card');
 
-    /* Animate out */
     card.classList.add(liked ? 'swipe-out-right' : 'swipe-out-left');
 
-    /* Save rating */
     await sb.from('actions').upsert({
       user_id: state.user.id,
       movie_id: movieId,
       want_to_watch: liked,
+      watched: false,
     }, { onConflict: 'user_id,movie_id' });
 
     state.currentMovie = null;
-
     setTimeout(() => {
       card.classList.remove('swipe-out-right', 'swipe-out-left');
+      App.loadNextMovie();
+    }, 380);
+  },
+
+  async markWatched() {
+    if (!state.currentMovie) return;
+    const movieId = state.currentMovie.id;
+    const card = $('#movie-card');
+
+    card.classList.add('swipe-out-up');
+
+    await sb.from('actions').upsert({
+      user_id: state.user.id,
+      movie_id: movieId,
+      want_to_watch: false,
+      watched: true,
+    }, { onConflict: 'user_id,movie_id' });
+
+    state.currentMovie = null;
+    setTimeout(() => {
+      card.classList.remove('swipe-out-up');
       App.loadNextMovie();
     }, 380);
   },
@@ -718,29 +781,40 @@ function closeModal() {
 ══════════════════════════════════════════════ */
 (function initSwipe() {
   const card = () => $('#movie-card');
-  let startX = 0, startY = 0, currentX = 0, dragging = false;
+  let startX = 0, startY = 0, currentX = 0, currentY = 0, dragging = false;
 
   function onStart(x, y) {
     if (!state.currentMovie) return;
-    startX = x; startY = y; currentX = 0; dragging = true;
+    startX = x; startY = y; currentX = 0; currentY = 0; dragging = true;
   }
   function onMove(x, y) {
     if (!dragging) return;
     currentX = x - startX;
-    const currentY = y - startY;
-    if (Math.abs(currentX) < Math.abs(currentY)) return; /* vertical scroll */
-    const rotate = currentX / 18;
-    card().style.transform = `translateX(${currentX}px) rotate(${rotate}deg)`;
-    card().classList.toggle('swiping-right', currentX > 30);
-    card().classList.toggle('swiping-left',  currentX < -30);
+    currentY = y - startY;
+    const absX = Math.abs(currentX), absY = Math.abs(currentY);
+
+    if (currentY < -20 && absY > absX) {
+      /* Swipe up — "уже смотрел" */
+      card().style.transform = `translateY(${currentY}px)`;
+      card().classList.add('swiping-up');
+      card().classList.remove('swiping-right', 'swiping-left');
+    } else if (absX > absY) {
+      /* Horizontal swipe */
+      const rotate = currentX / 18;
+      card().style.transform = `translateX(${currentX}px) rotate(${rotate}deg)`;
+      card().classList.toggle('swiping-right', currentX > 30);
+      card().classList.toggle('swiping-left',  currentX < -30);
+      card().classList.remove('swiping-up');
+    }
   }
   function onEnd() {
     if (!dragging) return;
     dragging = false;
     card().style.transform = '';
-    card().classList.remove('swiping-right', 'swiping-left');
-    if (currentX > 80)       App.rateMovie(true);
-    else if (currentX < -80) App.rateMovie(false);
+    card().classList.remove('swiping-right', 'swiping-left', 'swiping-up');
+    if      (currentX > 80)        App.rateMovie(true);
+    else if (currentX < -80)       App.rateMovie(false);
+    else if (currentY < -80)       App.markWatched();
   }
 
   document.addEventListener('touchstart', e => {
@@ -807,8 +881,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /* Rate buttons */
-  $('#like-btn').addEventListener('click',    () => App.rateMovie(true));
-  $('#dislike-btn').addEventListener('click', () => App.rateMovie(false));
+  $('#like-btn').addEventListener('click',     () => App.rateMovie(true));
+  $('#dislike-btn').addEventListener('click',  () => App.rateMovie(false));
+  $('#watched-btn').addEventListener('click',  () => App.markWatched());
 
   /* Modal */
   $('#modal-close').addEventListener('click', closeModal);
@@ -851,6 +926,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if ($('#page-browse').classList.contains('active')) {
       if (e.key === 'ArrowRight' || e.key === 'l') App.rateMovie(true);
       if (e.key === 'ArrowLeft'  || e.key === 'j') App.rateMovie(false);
+      if (e.key === 'ArrowUp'    || e.key === 'k') App.markWatched();
     }
     if (e.key === 'Escape') closeModal();
   });
