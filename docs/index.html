@@ -35,6 +35,7 @@
         </div>
         <button id="login-btn" class="btn btn-primary">Войти</button>
         <p class="auth-switch">Нет аккаунта? <a href="#" id="show-register">Зарегистрироваться →</a></p>
+        <p class="auth-switch"><a href="#" id="show-forgot">Забыли пароль?</a></p>
       </div>
 
       <!-- Register -->
@@ -54,6 +55,32 @@
         </div>
         <button id="register-btn" class="btn btn-primary">Создать аккаунт</button>
         <p class="auth-switch">Уже есть аккаунт? <a href="#" id="show-login">Войти →</a></p>
+      </div>
+
+      <!-- Forgot Password -->
+      <div id="forgot-form" class="auth-form hidden">
+        <h2 class="form-title">Сброс пароля</h2>
+        <p class="auth-hint">Введите email — пришлём ссылку для смены пароля.</p>
+        <div class="input-group">
+          <label class="input-label">Email</label>
+          <input id="forgot-email" type="email" class="input" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <button id="forgot-btn" class="btn btn-primary">Отправить ссылку</button>
+        <p class="auth-switch"><a href="#" id="show-login-2">← Назад к входу</a></p>
+      </div>
+
+      <!-- New Password (shown after clicking reset link in email) -->
+      <div id="newpass-form" class="auth-form hidden">
+        <h2 class="form-title">Новый пароль</h2>
+        <div class="input-group">
+          <label class="input-label">Новый пароль</label>
+          <input id="newpass-password" type="password" class="input" placeholder="Минимум 6 символов" autocomplete="new-password">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Повторите пароль</label>
+          <input id="newpass-confirm" type="password" class="input" placeholder="Повторите пароль" autocomplete="new-password">
+        </div>
+        <button id="newpass-btn" class="btn btn-primary">Сохранить пароль</button>
       </div>
 
       <div id="auth-msg" class="auth-msg hidden"></div>
