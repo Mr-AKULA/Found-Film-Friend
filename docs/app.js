@@ -32,6 +32,7 @@ const state = {
   currentFriend:  null,   // { id, name } — open friend panel
   genres:         [],     // all genres from DB
   selectedGenres: [],     // genre IDs active in filter
+  lastAction:     null,   // { movie, type } — for undo
 };
 
 /* Force HTTPS so HTTP images aren't blocked on the HTTPS page */
@@ -147,8 +148,88 @@ async function onSignedIn(user) {
 
   showScreen('app');
   App.navigate('browse');
-  loadGenres();
+  loadGenres().then(() => checkOnboarding());
   App.loadNextMovie();
+}
+
+/* ══════════════════════════════════════════════
+   ONBOARDING
+══════════════════════════════════════════════ */
+async function checkOnboarding() {
+  const { count } = await sb
+    .from('actions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', state.user.id);
+  if (count === 0 && state.genres.length > 0) showOnboarding();
+}
+
+function showOnboarding() {
+  const container = $('#onboarding-genres');
+  container.innerHTML = '';
+  state.genres.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'onboarding-genre';
+    btn.textContent = g.name;
+    btn.dataset.id = g.id;
+    btn.addEventListener('click', () => btn.classList.toggle('active'));
+    container.appendChild(btn);
+  });
+  show($('#onboarding'));
+}
+
+/* ══════════════════════════════════════════════
+   STATS
+══════════════════════════════════════════════ */
+async function openStats() {
+  const uid = state.user.id;
+  $('#stats-content').innerHTML = '<div class="spinner" style="margin:24px auto"></div>';
+  show($('#stats-modal'));
+
+  const [{ data: actions }, { data: friends }] = await Promise.all([
+    sb.from('actions').select('movie_id, want_to_watch, watched').eq('user_id', uid),
+    sb.from('friends').select('id').or(`user_one.eq.${uid},user_two.eq.${uid}`).eq('status', 1),
+  ]);
+
+  const total   = (actions || []).length;
+  const liked   = (actions || []).filter(a => a.want_to_watch === true).length;
+  const watched = (actions || []).filter(a => a.watched === true).length;
+  const skipped = total - liked - watched;
+
+  let topGenresHtml = '';
+  const likedIds = (actions || []).filter(a => a.want_to_watch).map(a => a.movie_id);
+  if (likedIds.length > 0) {
+    const { data: mg } = await sb
+      .from('movie_genres')
+      .select('genre_id, genres(name)')
+      .in('movie_id', likedIds);
+
+    const counts = {};
+    (mg || []).forEach(r => {
+      const n = r.genres?.name;
+      if (n) counts[n] = (counts[n] || 0) + 1;
+    });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const max = top[0]?.[1] || 1;
+    topGenresHtml = top.map(([name, cnt]) => `
+      <div class="stat-genre-row">
+        <span class="stat-genre-name">${escHtml(name)}</span>
+        <div class="stat-genre-bar-wrap">
+          <div class="stat-genre-bar" style="width:${Math.round(cnt/max*100)}%"></div>
+        </div>
+        <span class="stat-genre-cnt">${cnt}</span>
+      </div>`).join('');
+  }
+
+  $('#stats-content').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-lbl">Оценено</div></div>
+      <div class="stat-card stat-card-like"><div class="stat-num">${liked}</div><div class="stat-lbl">❤️ Хочу</div></div>
+      <div class="stat-card stat-card-watch"><div class="stat-num">${watched}</div><div class="stat-lbl">👁 Смотрел</div></div>
+      <div class="stat-card"><div class="stat-num">${(friends||[]).length}</div><div class="stat-lbl">Друзей</div></div>
+    </div>
+    ${total > 0 ? `<p class="stat-pct">❤️ нравится <b>${Math.round(liked/total*100)}%</b> фильмов</p>` : ''}
+    ${topGenresHtml ? `<div class="stats-genres-section"><p class="stats-section-lbl">Любимые жанры</p>${topGenresHtml}</div>` : ''}
+  `;
 }
 
 async function loadGenres() {
@@ -188,6 +269,40 @@ function renderGenrePills() {
     });
     container.appendChild(btn);
   });
+}
+
+/* ══════════════════════════════════════════════
+   UNDO
+══════════════════════════════════════════════ */
+let _undoTimer = null;
+
+function showUndo() {
+  const btn = $('#undo-btn');
+  if (!btn) return;
+  btn.classList.remove('hidden');
+  clearTimeout(_undoTimer);
+  _undoTimer = setTimeout(() => btn.classList.add('hidden'), 3500);
+}
+
+async function undoLastAction() {
+  if (!state.lastAction) return;
+  const { movie, type } = state.lastAction;
+  state.lastAction = null;
+  $('#undo-btn')?.classList.add('hidden');
+  clearTimeout(_undoTimer);
+
+  await sb.from('actions')
+    .delete()
+    .eq('user_id', state.user.id)
+    .eq('movie_id', movie.id);
+
+  /* Restore the card immediately */
+  state.currentMovie = movie;
+  renderMovieCard(movie);
+  show($('#browse-main'));
+  hide($('#browse-loading'));
+  hide($('#browse-empty'));
+  showToast('Отменено ↩');
 }
 
 async function handleLogin() {
@@ -354,19 +469,19 @@ const App = {
 
   async rateMovie(liked) {
     if (!state.currentMovie) return;
-    const movieId = state.currentMovie.id;
-    const card = $('#movie-card');
+    const movie = state.currentMovie;
+    const card  = $('#movie-card');
 
     card.classList.add(liked ? 'swipe-out-right' : 'swipe-out-left');
+    state.lastAction  = { movie, type: liked ? 'like' : 'dislike' };
+    state.currentMovie = null;
+    showUndo();
 
     await sb.from('actions').upsert({
-      user_id: state.user.id,
-      movie_id: movieId,
-      want_to_watch: liked,
-      watched: false,
+      user_id: state.user.id, movie_id: movie.id,
+      want_to_watch: liked, watched: false,
     }, { onConflict: 'user_id,movie_id' });
 
-    state.currentMovie = null;
     setTimeout(() => {
       card.classList.remove('swipe-out-right', 'swipe-out-left');
       App.loadNextMovie();
@@ -375,19 +490,19 @@ const App = {
 
   async markWatched() {
     if (!state.currentMovie) return;
-    const movieId = state.currentMovie.id;
-    const card = $('#movie-card');
+    const movie = state.currentMovie;
+    const card  = $('#movie-card');
 
     card.classList.add('swipe-out-up');
+    state.lastAction  = { movie, type: 'watched' };
+    state.currentMovie = null;
+    showUndo();
 
     await sb.from('actions').upsert({
-      user_id: state.user.id,
-      movie_id: movieId,
-      want_to_watch: false,
-      watched: true,
+      user_id: state.user.id, movie_id: movie.id,
+      want_to_watch: false, watched: true,
     }, { onConflict: 'user_id,movie_id' });
 
-    state.currentMovie = null;
     setTimeout(() => {
       card.classList.remove('swipe-out-up');
       App.loadNextMovie();
@@ -921,18 +1036,56 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  /* Undo */
+  $('#undo-btn')?.addEventListener('click', undoLastAction);
+
+  /* Stats */
+  $('#stats-btn')?.addEventListener('click', openStats);
+  $('#stats-close')?.addEventListener('click', () => hide($('#stats-modal')));
+  $('#stats-overlay')?.addEventListener('click', () => hide($('#stats-modal')));
+
+  /* Onboarding */
+  $('#onboarding-done')?.addEventListener('click', async () => {
+    hide($('#onboarding'));
+    const selected = $$('#onboarding-genres .onboarding-genre.active').map(b => parseInt(b.dataset.id));
+    if (selected.length > 0) {
+      state.selectedGenres = selected;
+      renderGenrePills();
+      state.currentMovie = null;
+      App.loadNextMovie();
+    }
+  });
+
+  /* Watchlist search */
+  $('#watchlist-search')?.addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    $$('#watchlist-grid .movie-mini').forEach(el => {
+      const title = el.querySelector('.movie-mini-title')?.textContent.toLowerCase() || '';
+      el.style.display = (!q || title.includes(q)) ? '' : 'none';
+    });
+  });
+
   /* Keyboard shortcuts */
   document.addEventListener('keydown', e => {
     if ($('#page-browse').classList.contains('active')) {
       if (e.key === 'ArrowRight' || e.key === 'l') App.rateMovie(true);
       if (e.key === 'ArrowLeft'  || e.key === 'j') App.rateMovie(false);
       if (e.key === 'ArrowUp'    || e.key === 'k') App.markWatched();
+      if (e.key === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undoLastAction(); }
     }
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') {
+      closeModal();
+      hide($('#stats-modal'));
+    }
   });
 
   /* Boot */
   initAuth();
+
+  /* Register service worker */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
 });
 
 /* ══════════════════════════════════════════════

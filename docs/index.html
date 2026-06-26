@@ -8,6 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7c3aed">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -93,6 +97,12 @@
     <!-- Header -->
     <header class="header">
       <div class="header-logo">🎬 <span>FFF</span></div>
+      <button id="stats-btn" class="btn-icon" title="Статистика">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+      </button>
       <button id="logout-btn" class="btn-icon" title="Выйти">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -167,6 +177,9 @@
       <!-- ── WATCHLIST ── -->
       <div id="page-watchlist" class="page">
         <h2 class="page-title">Мой список</h2>
+        <div class="search-wrap">
+          <input id="watchlist-search" class="search-input" type="search" placeholder="Поиск по названию...">
+        </div>
         <div id="watchlist-grid" class="movie-grid"></div>
         <div id="watchlist-empty" class="state hidden">
           <div class="state-icon">🎭</div>
@@ -279,8 +292,35 @@
     </div>
   </div>
 
+  <!-- ══════════════ UNDO ══════════════ -->
+  <button id="undo-btn" class="undo-btn hidden">↩ Отменить</button>
+
   <!-- ══════════════ TOAST ══════════════ -->
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <!-- ══════════════ STATS MODAL ══════════════ -->
+  <div id="stats-modal" class="modal hidden" role="dialog">
+    <div class="modal-overlay" id="stats-overlay"></div>
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <button class="modal-close" id="stats-close">✕</button>
+      <div class="modal-body" style="padding-top:8px">
+        <h2 class="modal-title">Ваша статистика</h2>
+        <div id="stats-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ ONBOARDING ══════════════ -->
+  <div id="onboarding" class="onboarding hidden">
+    <div class="onboarding-inner">
+      <div class="onboarding-emoji">🎬</div>
+      <h2 class="onboarding-title">Какие фильмы любишь?</h2>
+      <p class="onboarding-sub">Выбери жанры — покажем подходящее сразу</p>
+      <div id="onboarding-genres" class="onboarding-genres"></div>
+      <button id="onboarding-done" class="btn btn-primary" style="margin-top:20px;width:100%">Начать →</button>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
