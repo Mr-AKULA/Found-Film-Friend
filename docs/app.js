@@ -13,7 +13,17 @@ const SUPABASE_URL     = 'https://swgvbagncvbkoyztrimz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_0NHWJrnl1boP_Ma0hLH9Ew_m684L-5J';
 
 /* ─── Supabase client ─── */
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/* Custom storage: falls back to in-memory when localStorage is blocked
+   (Firefox Enhanced Tracking Protection blocks storage from CDN scripts) */
+const _mem = {};
+const _storage = {
+  getItem:    k => { try { return localStorage.getItem(k);    } catch { return _mem[k] ?? null; } },
+  setItem:    (k,v) => { try { localStorage.setItem(k, v);   } catch { _mem[k] = v; } },
+  removeItem: k => { try { localStorage.removeItem(k);        } catch { delete _mem[k]; } },
+};
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { storage: _storage, persistSession: true, autoRefreshToken: true },
+});
 
 /* ─── App state ─── */
 const state = {
@@ -250,7 +260,7 @@ const App = {
 
     const { data, error } = await sb
       .from('actions')
-      .select('movie_id, movies(id, name, year, age_rating, description, slogan), posters(preview_url)')
+      .select('movie_id, movies(id, name, year, age_rating, description, slogan, posters(preview_url))')
       .eq('user_id', state.user.id)
       .eq('want_to_watch', true)
       .order('id', { ascending: false });
@@ -264,7 +274,7 @@ const App = {
 
     data.forEach(row => {
       const m = row.movies;
-      const poster = row.posters?.[0]?.preview_url || '';
+      const poster = m?.posters?.[0]?.preview_url || '';
       const el = createMovieMini(m, poster);
       el.addEventListener('click', () => openMovieModal(m, poster, true));
       grid.appendChild(el);

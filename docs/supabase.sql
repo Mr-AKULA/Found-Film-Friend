@@ -199,7 +199,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_next_movie TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_next_movie TO authenticated, anon;
 
 -- ══════════════════════════════════════════════════════
 -- INDEXES for performance
