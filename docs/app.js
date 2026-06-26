@@ -60,10 +60,19 @@ function showToast(msg, duration = 2500) {
    AUTH
 ══════════════════════════════════════════════ */
 async function initAuth() {
-  /* Check for invite param ?invite=UUID */
+  /* Check for invite param ?invite=UUID — also persist in sessionStorage
+     so it survives email-confirmation redirects that lose the URL params */
   const params = new URLSearchParams(location.search);
   const inviteId = params.get('invite');
-  if (inviteId) state.pendingFriend = inviteId;
+  if (inviteId) {
+    state.pendingFriend = inviteId;
+    try { sessionStorage.setItem('fff_invite', inviteId); } catch {}
+  } else {
+    try {
+      const stored = sessionStorage.getItem('fff_invite');
+      if (stored) state.pendingFriend = stored;
+    } catch {}
+  }
 
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
@@ -426,8 +435,8 @@ async function addFriend(friendId) {
   );
   hide($('#friend-banner'));
   state.pendingFriend = null;
+  try { sessionStorage.removeItem('fff_invite'); } catch {}
   showToast('Друг добавлен! 👥');
-  /* Remove invite param from URL */
   history.replaceState({}, '', location.pathname);
 }
 
@@ -678,6 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#friend-skip-btn').addEventListener('click', () => {
     hide($('#friend-banner'));
     state.pendingFriend = null;
+    try { sessionStorage.removeItem('fff_invite'); } catch {}
     history.replaceState({}, '', location.pathname);
   });
 
