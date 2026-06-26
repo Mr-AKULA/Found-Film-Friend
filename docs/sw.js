@@ -1,8 +1,5 @@
-const CACHE = 'fff-v6';
-/* Only cache the shell — JS/CSS fetched fresh each time so updates apply instantly */
+const CACHE = 'fff-v7';
 const STATIC = [
-  '/Found-Film-Friend/',
-  '/Found-Film-Friend/index.html',
   '/Found-Film-Friend/manifest.json',
 ];
 
@@ -20,15 +17,30 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = e.request.url;
-  /* Never cache: API calls, CDN scripts, and our own JS/CSS (always fetch fresh) */
+
+  /* Skip: API calls, CDN, our own JS/CSS — always fresh */
   if (url.includes('supabase.co') || url.includes('unpkg.com') || url.includes('fonts.') ||
       url.endsWith('.js') || url.endsWith('.css')) return;
 
+  /* HTML pages: network-first so updates are instant; cache is offline fallback */
+  if (e.request.mode === 'navigate' || url.endsWith('.html') ||
+      url.endsWith('/Found-Film-Friend/') || url === self.registration.scope) {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  /* Everything else (manifest, images): cache-first */
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
       if (res.ok && e.request.method === 'GET') {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
+        caches.open(CACHE).then(c => c.put(e.request, res.clone()));
       }
       return res;
     }))
