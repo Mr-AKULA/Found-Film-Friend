@@ -1,6 +1,7 @@
 # ── Секреты и конфиг ──────────────────────────────────
 /Settings.py
 export_to_supabase.py
+upload_posters.py
 
 # ── База данных (хранится в Supabase, не в репо) ───────
 *.db

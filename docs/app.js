@@ -299,7 +299,7 @@ const App = {
     const uid = state.user.id;
     const { data, error } = await sb
       .from('friends')
-      .select('user_one, user_two, status, profiles!friends_user_one_fkey(id), profiles!friends_user_two_fkey(id)')
+      .select('user_one, user_two')
       .or(`user_one.eq.${uid},user_two.eq.${uid}`)
       .eq('status', 1);
 
@@ -310,7 +310,6 @@ const App = {
       return;
     }
 
-    /* Resolve friend IDs */
     const friendIds = data.map(f => f.user_one === uid ? f.user_two : f.user_one);
     const { data: profiles } = await sb
       .from('profiles')
