@@ -29,12 +29,14 @@ const state = {
   profile:        null,
   currentMovie:   null,
   pendingFriend:  null,   // from invite link
+  pendingMovieId: null,   // ?movie=ID — open after login
   currentFriend:  null,   // { id, name } — open friend panel
   genres:         [],     // all genres from DB
   selectedGenres: [],     // genre IDs to include (p_genre_ids)
   excludeGenres:  [],     // genre IDs to exclude (p_exclude_genre_ids)
   quickFilter:    null,   // 'films' | 'mults' | null
   lastAction:     null,   // { movie, type } — for undo
+  sharingMovie:   null,   // movie being shared
 };
 
 /* Force HTTPS so HTTP images aren't blocked on the HTTPS page */
@@ -75,6 +77,17 @@ async function initAuth() {
     try {
       const stored = sessionStorage.getItem('fff_invite');
       if (stored) state.pendingFriend = stored;
+    } catch {}
+  }
+
+  const movieParam = params.get('movie');
+  if (movieParam) {
+    state.pendingMovieId = parseInt(movieParam);
+    try { sessionStorage.setItem('fff_movie', movieParam); } catch {}
+  } else {
+    try {
+      const stored = sessionStorage.getItem('fff_movie');
+      if (stored) state.pendingMovieId = parseInt(stored);
     } catch {}
   }
 
@@ -152,6 +165,21 @@ async function onSignedIn(user) {
   App.navigate('browse');
   loadGenres().then(() => checkOnboarding());
   App.loadNextMovie();
+
+  /* Check unread recommendations count for badge */
+  sb.from('recommendations')
+    .select('id', { count: 'exact', head: true })
+    .eq('to_user', user.id)
+    .eq('seen', false)
+    .then(({ count }) => updateRecBadge(count || 0));
+
+  /* Open shared movie if came via ?movie=ID link */
+  if (state.pendingMovieId) {
+    openSharedMovie(state.pendingMovieId);
+    state.pendingMovieId = null;
+    try { sessionStorage.removeItem('fff_movie'); } catch {}
+    history.replaceState({}, '', location.pathname);
+  }
 }
 
 /* ══════════════════════════════════════════════
@@ -333,6 +361,178 @@ async function undoLastAction() {
   hide($('#browse-loading'));
   hide($('#browse-empty'));
   showToast('Отменено ↩');
+}
+
+/* ══════════════════════════════════════════════
+   RECOMMENDATIONS & SHARING
+══════════════════════════════════════════════ */
+
+function getMovieShareUrl(movieId) {
+  return `${location.origin}${location.pathname}?movie=${movieId}`;
+}
+
+function openShareSheet(movie) {
+  state.sharingMovie = movie;
+  $('#share-movie-name').textContent = `«${movie.name}»`;
+  /* Show native share button only if API available */
+  toggle($('#share-native-btn'), !!navigator.share);
+  show($('#share-sheet'));
+}
+
+function closeShareSheet() {
+  hide($('#share-sheet'));
+}
+
+async function openSharedMovie(movieId) {
+  /* Load and show movie in modal when opened via ?movie=ID */
+  const [{ data: movie }, { data: posters }] = await Promise.all([
+    sb.from('movies').select('id,name,slogan,description,year,age_rating,duration_minutes').eq('id', movieId).single(),
+    sb.from('posters').select('preview_url').eq('movie_id', movieId).limit(1),
+  ]);
+  if (!movie) return;
+  const posterUrl = posters?.[0]?.preview_url || '';
+  openMovieModal(movie, posterUrl, false);
+}
+
+async function openFriendPicker() {
+  const list  = $('#picker-list');
+  const empty = $('#picker-empty');
+  list.innerHTML = '';
+  hide(empty);
+  show($('#friend-picker'));
+
+  const uid = state.user.id;
+  const { data: rows } = await sb.from('friends')
+    .select('user_one,user_two')
+    .or(`user_one.eq.${uid},user_two.eq.${uid}`)
+    .eq('status', 1);
+
+  if (!rows || rows.length === 0) { show(empty); return; }
+
+  const friendIds = rows.map(f => f.user_one === uid ? f.user_two : f.user_one);
+  const { data: profiles } = await sb.from('profiles')
+    .select('id,display_name,email_username')
+    .in('id', friendIds);
+
+  if (!profiles || profiles.length === 0) { show(empty); return; }
+
+  profiles.forEach(p => {
+    const name = p.display_name || p.email_username || 'Друг';
+    const btn = document.createElement('button');
+    btn.className = 'picker-friend-item';
+    btn.innerHTML = `
+      <div class="friend-avatar">${escHtml(name[0]?.toUpperCase() || '?')}</div>
+      <div class="friend-name">${escHtml(name)}</div>
+      <svg class="picker-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+      </svg>`;
+    btn.addEventListener('click', () => sendRecommendation(p.id, name));
+    list.appendChild(btn);
+  });
+}
+
+async function sendRecommendation(toUserId, toUserName) {
+  const movie = state.sharingMovie;
+  hide($('#friend-picker'));
+  if (!movie) return;
+
+  const { error } = await sb.from('recommendations').upsert(
+    { from_user: state.user.id, to_user: toUserId, movie_id: movie.id, seen: false },
+    { onConflict: 'from_user,to_user,movie_id' }
+  );
+
+  state.sharingMovie = null;
+  if (error) { showToast('Ошибка: ' + error.message, 4000); return; }
+  showToast(`Рекомендовано ${toUserName} 🎬`);
+}
+
+async function loadRecommendations() {
+  const uid = state.user.id;
+
+  const { data: recs } = await sb.from('recommendations')
+    .select('id,from_user,movie_id,seen')
+    .eq('to_user', uid)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const section = $('#rec-section');
+  const grid    = $('#rec-grid');
+  if (!recs || recs.length === 0) { hide(section); updateRecBadge(0); return; }
+
+  const unread = recs.filter(r => !r.seen).length;
+  updateRecBadge(unread);
+
+  /* Load movie data */
+  const movieIds   = [...new Set(recs.map(r => r.movie_id))];
+  const fromIds    = [...new Set(recs.map(r => r.from_user))];
+
+  const [{ data: movies }, { data: posters }, { data: senders }] = await Promise.all([
+    sb.from('movies').select('id,name,year').in('id', movieIds),
+    sb.from('posters').select('movie_id,preview_url').in('movie_id', movieIds),
+    sb.from('profiles').select('id,display_name,email_username').in('id', fromIds),
+  ]);
+
+  const movieMap  = Object.fromEntries((movies  || []).map(m => [m.id, m]));
+  const posterMap = Object.fromEntries((posters || []).map(p => [p.movie_id, p.preview_url]));
+  const senderMap = Object.fromEntries((senders || []).map(s => [s.id, s.display_name || s.email_username || 'Друг']));
+
+  grid.innerHTML = '';
+  recs.forEach(rec => {
+    const m = movieMap[rec.movie_id];
+    if (!m) return;
+    const poster = posterMap[rec.movie_id];
+    const sender = senderMap[rec.from_user] || 'Друг';
+    const el = createRecItem(m, poster, sender, rec.seen);
+    el.addEventListener('click', async () => {
+      openMovieModal(m, poster || '', false);
+      /* Mark seen */
+      if (!rec.seen) {
+        await sb.from('recommendations').update({ seen: true }).eq('id', rec.id);
+        el.classList.add('rec-seen');
+        rec.seen = true;
+        const newUnread = recs.filter(r => !r.seen).length;
+        updateRecBadge(newUnread);
+      }
+    });
+    grid.appendChild(el);
+  });
+
+  show(section);
+
+  /* Mark all as seen after a delay */
+  if (unread > 0) {
+    setTimeout(async () => {
+      await sb.from('recommendations').update({ seen: true }).eq('to_user', uid).eq('seen', false);
+      updateRecBadge(0);
+    }, 3000);
+  }
+}
+
+function createRecItem(movie, posterUrl, senderName, seen) {
+  const el = document.createElement('div');
+  el.className = 'rec-item' + (seen ? ' rec-seen' : '');
+  const safeUrl = posterUrl ? safeImgUrl(posterUrl) : '';
+  el.innerHTML = `
+    ${safeUrl
+      ? `<img class="rec-poster" src="${safeUrl}" alt="${escHtml(movie.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
+      : `<div class="rec-poster rec-poster-empty">🎬</div>`}
+    <div class="rec-info">
+      <div class="rec-title">${escHtml(movie.name)}</div>
+      <div class="rec-from">от ${escHtml(senderName)}</div>
+    </div>
+    ${!seen ? '<div class="rec-dot"></div>' : ''}`;
+  return el;
+}
+
+function updateRecBadge(count) {
+  const badge = $('#rec-badge');
+  if (!badge) return;
+  if (count > 0) {
+    badge.textContent = count > 9 ? '9+' : count;
+    show(badge);
+  } else {
+    hide(badge);
+  }
 }
 
 async function handleLogin() {
@@ -606,6 +806,7 @@ const App = {
     hide(empty);
     hide($('#common-panel'));
     show(loading);
+    loadRecommendations();
 
     const uid = state.user.id;
 
@@ -901,6 +1102,9 @@ async function openMovieModal(movie, posterUrl, showRemove) {
     hide(watchSection);
   }
 
+  /* Share button handler */
+  $('#modal-share-btn').onclick = () => openShareSheet(movie);
+
   /* Remove button handler */
   const removeBtn = $('#modal-remove-btn');
   removeBtn.onclick = async () => {
@@ -1109,6 +1313,42 @@ document.addEventListener('DOMContentLoaded', () => {
       App.loadNextMovie();
     }
   });
+
+  /* Card share button */
+  $('#card-share-btn')?.addEventListener('click', e => {
+    e.stopPropagation();
+    if (state.currentMovie) openShareSheet(state.currentMovie);
+  });
+
+  /* Share sheet */
+  $('#share-overlay')?.addEventListener('click', closeShareSheet);
+  $('#share-friend-btn')?.addEventListener('click', () => {
+    closeShareSheet();
+    openFriendPicker();
+  });
+  $('#share-copy-btn')?.addEventListener('click', () => {
+    if (!state.sharingMovie) return;
+    const url = getMovieShareUrl(state.sharingMovie.id);
+    navigator.clipboard.writeText(url)
+      .then(() => { showToast('Ссылка скопирована 🔗'); closeShareSheet(); })
+      .catch(() => { showToast(url); closeShareSheet(); });
+  });
+  $('#share-native-btn')?.addEventListener('click', async () => {
+    const movie = state.sharingMovie;
+    if (!movie) return;
+    try {
+      await navigator.share({
+        title: movie.name,
+        text: `Рекомендую фильм «${movie.name}»${movie.year ? ` (${movie.year})` : ''} 🎬`,
+        url: getMovieShareUrl(movie.id),
+      });
+      closeShareSheet();
+    } catch {}
+  });
+
+  /* Friend picker */
+  $('#picker-close')?.addEventListener('click',   () => hide($('#friend-picker')));
+  $('#picker-overlay')?.addEventListener('click', () => hide($('#friend-picker')));
 
   /* Watchlist search */
   $('#watchlist-search')?.addEventListener('input', e => {

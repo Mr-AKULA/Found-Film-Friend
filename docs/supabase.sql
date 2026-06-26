@@ -247,6 +247,31 @@ ON CONFLICT (id) DO NOTHING;
 -- INDEXES for performance
 -- ══════════════════════════════════════════════════════
 
+-- ══════════════════════════════════════════════════════
+-- RECOMMENDATIONS (send movie recs to friends)
+-- ══════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS public.recommendations (
+  id          SERIAL PRIMARY KEY,
+  from_user   UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  to_user     UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  movie_id    INTEGER REFERENCES public.movies(id) ON DELETE CASCADE,
+  seen        BOOLEAN DEFAULT false,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(from_user, to_user, movie_id)
+);
+
+ALTER TABLE public.recommendations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Rec select own"  ON public.recommendations FOR SELECT
+  USING (auth.uid() = to_user OR auth.uid() = from_user);
+CREATE POLICY "Rec insert own"  ON public.recommendations FOR INSERT
+  WITH CHECK (auth.uid() = from_user);
+CREATE POLICY "Rec update seen" ON public.recommendations FOR UPDATE
+  USING (auth.uid() = to_user);
+
+CREATE INDEX IF NOT EXISTS idx_recs_to_user ON public.recommendations(to_user, seen);
+
 CREATE INDEX IF NOT EXISTS idx_actions_user_id      ON public.actions(user_id);
 CREATE INDEX IF NOT EXISTS idx_actions_movie_id     ON public.actions(movie_id);
 CREATE INDEX IF NOT EXISTS idx_actions_want         ON public.actions(user_id, want_to_watch);
