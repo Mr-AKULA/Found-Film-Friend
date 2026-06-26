@@ -72,6 +72,26 @@ async function initAuth() {
     } catch {}
   }
 
+  /* Detect password recovery from URL hash — Supabase adds #type=recovery
+     after the user clicks the reset link in the email. We check this
+     ourselves because getSession() may run before detectSessionInUrl
+     processes the hash, causing PASSWORD_RECOVERY event to be missed. */
+  const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
+  if (hashParams.get('type') === 'recovery') {
+    showScreen('auth');
+    showAuthForm('newpass');
+    sb.auth.onAuthStateChange(async (_event, session) => {
+      if (_event === 'PASSWORD_RECOVERY') {
+        showScreen('auth');
+        showAuthForm('newpass');
+        return;
+      }
+      /* After saving new password we call signOut → show login */
+      if (!session) showScreen('auth');
+    });
+    return;
+  }
+
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await onSignedIn(session.user);
