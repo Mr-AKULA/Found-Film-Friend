@@ -41,7 +41,7 @@ const state = {
   lang:           'ru',   // 'ru' | 'en'
 };
 
-/* ─── Init theme & lang from localStorage ─── */
+/* ─── Init theme, lang & hints from localStorage ─── */
 (function initPrefs() {
   try {
     const savedTheme = localStorage.getItem('fff_theme') || 'dark';
@@ -50,6 +50,9 @@ const state = {
     state.lang  = savedLang;
     if (savedTheme && savedTheme !== 'dark') {
       document.documentElement.dataset.theme = savedTheme;
+    }
+    if (localStorage.getItem('fff_hints') === 'true') {
+      document.documentElement.classList.add('show-hints');
     }
   } catch {}
 })();
@@ -511,6 +514,10 @@ function openSettings() {
 
   /* Highlight active lang */
   $$('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === state.lang));
+
+  /* Sync hints toggle */
+  const hintsOn = document.documentElement.classList.contains('show-hints');
+  $('#hints-toggle')?.classList.toggle('on', hintsOn);
 
   show($('#settings-panel'));
   document.body.classList.add('modal-open');
@@ -1305,24 +1312,30 @@ function closeModal() {
       /* Swipe up — "уже смотрел" */
       card().style.transform = `translateY(${currentY}px)`;
       card().classList.add('swiping-up');
-      card().classList.remove('swiping-right', 'swiping-left');
+      card().classList.remove('swiping-right', 'swiping-left', 'swiping-down');
+    } else if (currentY > 20 && absY > absX) {
+      /* Swipe down — share */
+      card().style.transform = `translateY(${Math.min(currentY * 0.35, 36)}px)`;
+      card().classList.add('swiping-down');
+      card().classList.remove('swiping-right', 'swiping-left', 'swiping-up');
     } else if (absX > absY) {
       /* Horizontal swipe */
       const rotate = currentX / 18;
       card().style.transform = `translateX(${currentX}px) rotate(${rotate}deg)`;
       card().classList.toggle('swiping-right', currentX > 30);
       card().classList.toggle('swiping-left',  currentX < -30);
-      card().classList.remove('swiping-up');
+      card().classList.remove('swiping-up', 'swiping-down');
     }
   }
   function onEnd() {
     if (!dragging) return;
     dragging = false;
     card().style.transform = '';
-    card().classList.remove('swiping-right', 'swiping-left', 'swiping-up');
-    if      (currentX > 80)        App.rateMovie(true);
-    else if (currentX < -80)       App.rateMovie(false);
-    else if (currentY < -80)       App.markWatched();
+    card().classList.remove('swiping-right', 'swiping-left', 'swiping-up', 'swiping-down');
+    if      (currentX > 80)                               App.rateMovie(true);
+    else if (currentX < -80)                              App.rateMovie(false);
+    else if (currentY < -80)                              App.markWatched();
+    else if (currentY > 80 && Math.abs(currentY) > Math.abs(currentX)) openShareSheet(state.currentMovie);
   }
 
   document.addEventListener('touchstart', e => {
@@ -1526,10 +1539,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  /* Card share button */
-  $('#card-share-btn')?.addEventListener('click', e => {
-    e.stopPropagation();
-    if (state.currentMovie) openShareSheet(state.currentMovie);
+  /* Hints toggle in settings */
+  $('#hints-toggle')?.addEventListener('click', () => {
+    const nowOn = !document.documentElement.classList.contains('show-hints');
+    document.documentElement.classList.toggle('show-hints', nowOn);
+    $('#hints-toggle')?.classList.toggle('on', nowOn);
+    try { localStorage.setItem('fff_hints', nowOn); } catch {}
   });
 
   /* Share sheet */

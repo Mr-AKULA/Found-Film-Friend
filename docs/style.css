@@ -321,7 +321,7 @@ a:hover { text-decoration: underline; }
   gap: 12px;
   flex: 1;
   min-height: 0;
-  padding-bottom: calc(var(--nav-h) + 12px);
+  padding-bottom: 12px;
   overflow: hidden;
 }
 
@@ -342,8 +342,8 @@ a:hover { text-decoration: underline; }
 .card-poster-wrap {
   position: relative;
   width: 100%;
-  /* Height adapts to viewport: fills space between header/pills/actions/nav */
-  height: clamp(200px, calc(100dvh - 430px), 560px);
+  /* Height: show poster + title/year/desc + buttons without scrolling */
+  height: clamp(180px, calc(100dvh - 460px), 480px);
   background: var(--elevated);
   flex-shrink: 1;
 }
@@ -391,8 +391,38 @@ a:hover { text-decoration: underline; }
   overflow: hidden;
 }
 
-/* Swipe hint & animations */
-.swipe-hint { font-size: 12px; color: var(--muted); letter-spacing: 0.02em; }
+/* Swipe hint — hidden by default, shown when setting enabled */
+.swipe-hint { font-size: 12px; color: var(--muted); letter-spacing: 0.02em; display: none; }
+html.show-hints .swipe-hint { display: block; }
+
+/* Actions group wraps buttons + hint with tight spacing */
+.actions-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Swipe-down indicator at bottom of poster */
+.swipe-down-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.45);
+  line-height: 1;
+  pointer-events: none;
+  animation: bounce-down 2s ease-in-out infinite;
+}
+@keyframes bounce-down {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%       { transform: translateX(-50%) translateY(4px); }
+}
+
+/* Swiping-down visual */
+.movie-card.swiping-down { box-shadow: 0 0 40px rgba(124,58,237,0.5); border-color: rgba(124,58,237,0.5); }
 
 .movie-card.swiping-right { box-shadow: 0 0 40px var(--like-glow); border-color: rgba(244,63,94,0.5); }
 .movie-card.swiping-left  { box-shadow: 0 0 40px rgba(51,65,85,0.5); border-color: rgba(51,65,85,0.5); }
@@ -972,12 +1002,9 @@ a:hover { text-decoration: underline; }
   .card-content { padding: 12px 16px 16px; }
   .card-desc { -webkit-line-clamp: 3; }
 }
-@media (min-height: 800px) {
-  .card-poster-wrap { height: clamp(300px, calc(100dvh - 420px), 600px); }
-}
 @media (min-width: 600px) {
   #page-browse { padding-top: 20px; }
-  .card-poster-wrap { height: clamp(320px, calc(100dvh - 380px), 640px); }
+  .card-poster-wrap { height: clamp(260px, calc(100dvh - 420px), 540px); }
 }
 
 /* ══════════════════════════════════════════════
@@ -1004,6 +1031,45 @@ a:hover { text-decoration: underline; }
 
 /* Make browse-main position:relative so share btn can be positioned inside card */
 #browse-main { position: relative; }
+
+/* ══════════════════════════════════════════════
+   SETTINGS TOGGLE (hints, etc.)
+══════════════════════════════════════════════ */
+.settings-toggle-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  gap: 12px;
+}
+.settings-toggle-info { flex: 1; min-width: 0; }
+.settings-toggle-label { font-size: 14px; font-weight: 500; color: var(--text); }
+.settings-toggle-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.toggle-btn {
+  width: 44px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--border);
+  border: none;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.22s;
+}
+.toggle-btn::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.22s;
+}
+.toggle-btn.on { background: var(--accent); }
+.toggle-btn.on::after { transform: translateX(18px); }
 
 /* ══════════════════════════════════════════════
    MODAL ACTION ROW (share + remove buttons)
