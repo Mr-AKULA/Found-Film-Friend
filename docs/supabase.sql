@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS public.actions (
   user_id        UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   movie_id       INTEGER REFERENCES public.movies(id) ON DELETE CASCADE,
   want_to_watch  BOOLEAN,
+  watched        BOOLEAN DEFAULT false,   -- swipe up: already seen
   timestamp      TIMESTAMPTZ DEFAULT NOW(),
   rating         INTEGER,
   UNIQUE(user_id, movie_id)
@@ -153,7 +154,10 @@ CREATE POLICY "Users update own friends"  ON public.friends FOR UPDATE USING (au
 -- Returns one unrated movie matching user's age
 -- ══════════════════════════════════════════════════════
 
-CREATE OR REPLACE FUNCTION public.get_next_movie(p_user_id UUID)
+CREATE OR REPLACE FUNCTION public.get_next_movie(
+  p_user_id   UUID,
+  p_genre_ids INTEGER[] DEFAULT NULL   -- NULL = no genre filter
+)
 RETURNS TABLE (
   id           INTEGER,
   name         TEXT,
@@ -177,7 +181,6 @@ BEGIN
 
   RETURN QUERY
   WITH
-  -- How strongly this user prefers each genre (count of liked movies in it)
   user_genre_prefs AS (
     SELECT mg.genre_id, COUNT(*)::FLOAT AS pref
     FROM public.actions a
@@ -185,42 +188,40 @@ BEGIN
     WHERE a.user_id = p_user_id AND a.want_to_watch = true
     GROUP BY mg.genre_id
   ),
-  -- Candidate movies with pre-computed scores
   candidates AS (
     SELECT
-      m.id,
-      m.name,
-      m.slogan,
-      m.description,
-      m.year,
-      m.age_rating,
-      m.priority,
+      m.id, m.name, m.slogan, m.description, m.year, m.age_rating, m.priority,
       (SELECT p.preview_url FROM public.posters p
-       WHERE p.movie_id = m.id LIMIT 1)                        AS preview_url,
+       WHERE p.movie_id = m.id LIMIT 1)                   AS preview_url,
       (SELECT COUNT(*) FROM public.actions a2
        WHERE a2.movie_id = m.id
-         AND a2.want_to_watch = true)::FLOAT                   AS like_count,
+         AND a2.want_to_watch = true)::FLOAT               AS like_count,
       COALESCE((
         SELECT SUM(ugp.pref)
         FROM public.movie_genres mg
         JOIN user_genre_prefs ugp ON ugp.genre_id = mg.genre_id
         WHERE mg.movie_id = m.id
-      ), 0)                                                     AS genre_score
+      ), 0)                                                AS genre_score
     FROM public.movies m
     WHERE COALESCE(m.age_rating, 0) <= user_age
       AND m.id NOT IN (
         SELECT a.movie_id FROM public.actions a WHERE a.user_id = p_user_id
       )
       AND EXISTS (SELECT 1 FROM public.posters p WHERE p.movie_id = m.id)
+      -- genre filter: NULL = all genres
+      AND (p_genre_ids IS NULL OR EXISTS (
+        SELECT 1 FROM public.movie_genres mg2
+        WHERE mg2.movie_id = m.id AND mg2.genre_id = ANY(p_genre_ids)
+      ))
   )
   SELECT
     c.id, c.name, c.slogan, c.description,
     c.year, c.age_rating, c.priority, c.preview_url
   FROM candidates c
   ORDER BY RANDOM() * POWER(10,
-    COALESCE(c.priority, 1)::FLOAT   -- admin quality signal
-    + LOG(1 + c.like_count)          -- community popularity
-    + LOG(1 + c.genre_score)         -- personal taste
+    COALESCE(c.priority, 1)::FLOAT
+    + LOG(1 + c.like_count)
+    + LOG(1 + c.genre_score)
   ) DESC
   LIMIT 1;
 END;
