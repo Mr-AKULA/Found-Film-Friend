@@ -611,7 +611,7 @@ async function sendRecommendation(toUserId, toUserName) {
 
   const { error } = await sb.from('recommendations').upsert(
     { from_user: state.user.id, to_user: toUserId, movie_id: movie.id, seen: false },
-    { onConflict: 'from_user,to_user,movie_id' }
+    { onConflict: 'from_user,to_user,movie_id', ignoreDuplicates: true }
   );
 
   state.sharingMovie = null;
@@ -625,6 +625,7 @@ async function loadRecommendations() {
   const { data: recs } = await sb.from('recommendations')
     .select('id,from_user,movie_id,seen')
     .eq('to_user', uid)
+    .eq('seen', false)
     .order('created_at', { ascending: false })
     .limit(20);
 
@@ -664,13 +665,7 @@ async function loadRecommendations() {
 
   show(section);
 
-  /* Mark all as seen after a delay */
-  if (unread > 0) {
-    setTimeout(async () => {
-      await sb.from('recommendations').update({ seen: true }).eq('to_user', uid).eq('seen', false);
-      updateRecBadge(0);
-    }, 3000);
-  }
+  /* Badge cleared only when user rates a recommended movie */
 }
 
 function createRecItem(movie, posterUrl, senderName, seen) {
@@ -1250,7 +1245,7 @@ async function openMovieModal(movie, posterUrl, showRemove, recId = null) {
         { user_id: state.user.id, movie_id: movie.id, want_to_watch: wantToWatch, watched },
         { onConflict: 'user_id,movie_id' }
       );
-      await sb.from('recommendations').delete().eq('id', recId);
+      await sb.from('recommendations').update({ seen: true }).eq('id', recId);
       closeModal();
       loadRecommendations();
     };
