@@ -717,6 +717,32 @@ a:hover { text-decoration: underline; }
 }
 
 /* ══════════════════════════════════════════════
+   FRIEND PANEL TABS
+══════════════════════════════════════════════ */
+.panel-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 12px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab-btn.active {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: #fff;
+}
+
+/* ══════════════════════════════════════════════
    RESPONSIVE
 ══════════════════════════════════════════════ */
 @media (min-height: 700px) {

@@ -185,17 +185,22 @@
           <p>Поделитесь ссылкой выше — и друг появится в списке</p>
         </div>
 
-        <!-- Common movies panel (shown when friend selected) -->
+        <!-- Friend detail panel -->
         <div id="common-panel" class="common-panel hidden">
           <div class="common-header">
             <button id="common-back" class="btn-back">← Назад</button>
-            <h3 id="common-title">Общие фильмы</h3>
+            <h3 id="common-friend-name"></h3>
+          </div>
+          <div class="panel-tabs">
+            <button class="tab-btn active" data-tab="common">Общие</button>
+            <button class="tab-btn" data-tab="friend">Список друга</button>
           </div>
           <div id="common-grid" class="movie-grid"></div>
+          <div id="common-loading" class="state hidden"><div class="spinner"></div></div>
           <div id="common-empty" class="state hidden">
             <div class="state-icon">🍿</div>
-            <h3>Нет общих фильмов</h3>
-            <p>Оценивайте больше фильмов — появятся совпадения!</p>
+            <h3 id="common-empty-text">Нет общих фильмов</h3>
+            <p id="common-empty-sub">Оценивайте больше фильмов — появятся совпадения!</p>
           </div>
         </div>
       </div>
