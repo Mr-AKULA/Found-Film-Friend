@@ -1,4 +1,4 @@
-const CACHE = 'fff-v8';
+const CACHE = 'fff-v9';
 const STATIC = [
   '/Found-Film-Friend/manifest.json',
 ];
