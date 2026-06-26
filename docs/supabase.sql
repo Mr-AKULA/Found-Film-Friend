@@ -168,13 +168,11 @@ LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   user_age INTEGER;
 BEGIN
-  -- Calculate user's age from birth_date
   SELECT EXTRACT(YEAR FROM AGE(CURRENT_DATE, birth_date))::INTEGER
   INTO user_age
   FROM public.profiles
-  WHERE id = p_user_id;
+  WHERE profiles.id = p_user_id;
 
-  -- Default to 18 if no birth_date
   IF user_age IS NULL THEN user_age := 18; END IF;
 
   RETURN QUERY
@@ -186,13 +184,13 @@ BEGIN
     m.year,
     m.age_rating,
     m.priority,
-    p.preview_url
+    (SELECT p.preview_url FROM public.posters p
+     WHERE p.movie_id = m.id LIMIT 1) AS preview_url
   FROM public.movies m
-  LEFT JOIN public.posters p ON m.id = p.movie_id
   WHERE
     COALESCE(m.age_rating, 0) <= user_age
     AND m.id NOT IN (
-      SELECT movie_id FROM public.actions WHERE user_id = p_user_id
+      SELECT a.movie_id FROM public.actions a WHERE a.user_id = p_user_id
     )
   ORDER BY RANDOM() * POWER(10, COALESCE(m.priority, 1)::FLOAT) DESC
   LIMIT 1;
@@ -200,6 +198,15 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_next_movie TO authenticated, anon;
+
+-- Backfill profiles for users registered before the trigger was created
+INSERT INTO public.profiles (id, email_username, birth_date)
+SELECT
+  id,
+  split_part(email, '@', 1),
+  (raw_user_meta_data->>'birth_date')::DATE
+FROM auth.users
+ON CONFLICT (id) DO NOTHING;
 
 -- ══════════════════════════════════════════════════════
 -- INDEXES for performance
