@@ -37,7 +37,22 @@ const state = {
   quickFilter:    null,   // 'films' | 'mults' | null
   lastAction:     null,   // { movie, type } — for undo
   sharingMovie:   null,   // movie being shared
+  theme:          'dark', // active theme id
+  lang:           'ru',   // 'ru' | 'en'
 };
+
+/* ─── Init theme & lang from localStorage ─── */
+(function initPrefs() {
+  try {
+    const savedTheme = localStorage.getItem('fff_theme') || 'dark';
+    const savedLang  = localStorage.getItem('fff_lang') || (navigator.language?.startsWith('en') ? 'en' : 'ru');
+    state.theme = savedTheme;
+    state.lang  = savedLang;
+    if (savedTheme && savedTheme !== 'dark') {
+      document.documentElement.dataset.theme = savedTheme;
+    }
+  } catch {}
+})();
 
 /* Force HTTPS so HTTP images aren't blocked on the HTTPS page */
 function safeImgUrl(url) {
@@ -361,6 +376,149 @@ async function undoLastAction() {
   hide($('#browse-loading'));
   hide($('#browse-empty'));
   showToast('Отменено ↩');
+}
+
+/* ══════════════════════════════════════════════
+   I18N (INTERNATIONALIZATION)
+══════════════════════════════════════════════ */
+const I18N = {
+  ru: {
+    nav_browse:   'Смотреть',
+    nav_watchlist:'Список',
+    nav_friends:  'Друзья',
+    save:         'Сохранить',
+    cancel:       'Отмена',
+    settings_appearance: 'Оформление',
+    settings_language:   'Язык',
+    settings_more:       'Скоро',
+    settings_notifs:     'Уведомления',
+    settings_genres_default: 'Жанры по умолчанию',
+    settings_privacy:    'Приватность',
+    settings_soon:       'Скоро',
+    sign_out:            'Выйти из аккаунта',
+    settings_name_ph:    'Ваше имя',
+    swipe_hint:          '← скип · 👁 смотрел · ❤️ хочу →',
+    browse_empty_title:  'Вы всё оценили!',
+    browse_empty_sub:    'Скоро добавим новые фильмы',
+    watchlist_title:     'Мой список',
+    watchlist_search_ph: 'Поиск по названию...',
+    friends_title:       'Друзья',
+    share_to_friend:     'Другу в FFF',
+    share_copy:          'Скопировать ссылку',
+    share_native:        'Поделиться…',
+  },
+  en: {
+    nav_browse:   'Browse',
+    nav_watchlist:'Watchlist',
+    nav_friends:  'Friends',
+    save:         'Save',
+    cancel:       'Cancel',
+    settings_appearance: 'Appearance',
+    settings_language:   'Language',
+    settings_more:       'Coming soon',
+    settings_notifs:     'Notifications',
+    settings_genres_default: 'Default genres',
+    settings_privacy:    'Privacy',
+    settings_soon:       'Soon',
+    sign_out:            'Sign out',
+    settings_name_ph:    'Your name',
+    swipe_hint:          '← skip · 👁 watched · ❤️ like →',
+    browse_empty_title:  'You rated everything!',
+    browse_empty_sub:    'New movies coming soon',
+    watchlist_title:     'My List',
+    watchlist_search_ph: 'Search by title...',
+    friends_title:       'Friends',
+    share_to_friend:     'Friend in FFF',
+    share_copy:          'Copy link',
+    share_native:        'Share…',
+  },
+};
+
+function t(key) {
+  return I18N[state.lang]?.[key] ?? I18N.ru[key] ?? key;
+}
+
+function applyLang() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPh);
+  });
+  /* Update dynamic search placeholder */
+  const srch = $('#watchlist-search');
+  if (srch) srch.placeholder = t('watchlist_search_ph');
+  /* Update swipe hint */
+  const hint = $('.swipe-hint');
+  if (hint) hint.textContent = t('swipe_hint');
+  /* Update page titles */
+  const wlTitle = $('#page-watchlist .page-title');
+  if (wlTitle) wlTitle.textContent = t('watchlist_title');
+  const frTitle = $('#page-friends .page-title');
+  if (frTitle) frTitle.textContent = t('friends_title');
+}
+
+/* ══════════════════════════════════════════════
+   THEMES
+══════════════════════════════════════════════ */
+const THEMES = [
+  { id: 'dark',     nameRu: 'Тёмная',   nameEn: 'Dark',     colors: ['#080810','#7c3aed'] },
+  { id: 'midnight', nameRu: 'Полночь',  nameEn: 'Midnight', colors: ['#03030f','#3b82f6'] },
+  { id: 'sunset',   nameRu: 'Закат',    nameEn: 'Sunset',   colors: ['#0d0806','#f97316'] },
+  { id: 'forest',   nameRu: 'Лес',      nameEn: 'Forest',   colors: ['#030d06','#10b981'] },
+  { id: 'rose',     nameRu: 'Алый',     nameEn: 'Rose',     colors: ['#0d0609','#e11d48'] },
+  { id: 'light',    nameRu: 'Светлая',  nameEn: 'Light',    colors: ['#f0f0f8','#7c3aed'] },
+];
+
+function applyTheme(id) {
+  document.documentElement.dataset.theme = id === 'dark' ? '' : id;
+  state.theme = id;
+  try { localStorage.setItem('fff_theme', id); } catch {}
+  renderThemeGrid();
+}
+
+function renderThemeGrid() {
+  const grid = $('#theme-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  THEMES.forEach(th => {
+    const btn = document.createElement('button');
+    btn.className = 'theme-swatch' + (state.theme === th.id ? ' active' : '');
+    btn.title = state.lang === 'en' ? th.nameEn : th.nameRu;
+    btn.innerHTML = `
+      <div class="theme-color" style="background:linear-gradient(135deg,${th.colors[0]} 0%,${th.colors[1]} 100%)"></div>
+      <div class="theme-name">${state.lang === 'en' ? th.nameEn : th.nameRu}</div>`;
+    btn.addEventListener('click', () => applyTheme(th.id));
+    grid.appendChild(btn);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   SETTINGS PANEL
+══════════════════════════════════════════════ */
+function openSettings() {
+  const profile = state.profile;
+  const user    = state.user;
+  const name    = profile?.display_name || profile?.email_username || '?';
+
+  $('#settings-avatar').textContent = name[0]?.toUpperCase() || '?';
+  $('#settings-display-name').textContent = name;
+  $('#settings-email-label').textContent  = user?.email || '';
+
+  hide($('#settings-name-form'));
+  renderThemeGrid();
+  applyLang();
+
+  /* Highlight active lang */
+  $$('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === state.lang));
+
+  show($('#settings-panel'));
+  document.body.classList.add('modal-open');
+}
+
+function closeSettings() {
+  hide($('#settings-panel'));
+  document.body.classList.remove('modal-open');
 }
 
 /* ══════════════════════════════════════════════
@@ -1314,6 +1472,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  /* Logo → settings panel */
+  $('#logo-btn')?.addEventListener('click', openSettings);
+  $('#settings-close')?.addEventListener('click', closeSettings);
+  $('#settings-overlay')?.addEventListener('click', closeSettings);
+
+  /* Sign out from settings */
+  $('#settings-logout-btn')?.addEventListener('click', async () => {
+    closeSettings();
+    await sb.auth.signOut();
+    state.user = null; state.profile = null; state.currentMovie = null;
+  });
+
+  /* Edit name */
+  $('#settings-edit-name-btn')?.addEventListener('click', () => {
+    const form = $('#settings-name-form');
+    const isHidden = form.classList.contains('hidden');
+    if (isHidden) {
+      $('#settings-name-input').value = state.profile?.display_name || '';
+      show(form);
+      $('#settings-name-input').focus();
+    } else {
+      hide(form);
+    }
+  });
+  $('#settings-name-cancel')?.addEventListener('click', () => hide($('#settings-name-form')));
+  $('#settings-name-save')?.addEventListener('click', async () => {
+    const name = $('#settings-name-input').value.trim();
+    if (!name) return;
+    const { error } = await sb.from('profiles')
+      .update({ display_name: name })
+      .eq('id', state.user.id);
+    if (error) { showToast('Ошибка: ' + error.message); return; }
+    state.profile.display_name = name;
+    $('#settings-display-name').textContent = name;
+    $('#settings-avatar').textContent = name[0]?.toUpperCase() || '?';
+    hide($('#settings-name-form'));
+    showToast('Имя сохранено ✓');
+  });
+  $('#settings-name-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') $('#settings-name-save').click();
+    if (e.key === 'Escape') hide($('#settings-name-form'));
+  });
+
+  /* Language buttons */
+  $$('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.lang = btn.dataset.lang;
+      try { localStorage.setItem('fff_lang', state.lang); } catch {}
+      $$('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === state.lang));
+      applyLang();
+      renderThemeGrid(); // refresh theme names in selected language
+    });
+  });
+
   /* Card share button */
   $('#card-share-btn')?.addEventListener('click', e => {
     e.stopPropagation();
@@ -1372,6 +1584,9 @@ document.addEventListener('DOMContentLoaded', () => {
       hide($('#stats-modal'));
     }
   });
+
+  /* Apply language on start */
+  applyLang();
 
   /* Boot */
   initAuth();
