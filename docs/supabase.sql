@@ -195,7 +195,13 @@ BEGIN
     AND EXISTS (
       SELECT 1 FROM public.posters p WHERE p.movie_id = m.id
     )
-  ORDER BY RANDOM() * POWER(10, COALESCE(m.priority, 1)::FLOAT) DESC
+  ORDER BY RANDOM() * POWER(10,
+    COALESCE(m.priority, 1)::FLOAT
+    + LOG(1 + (
+        SELECT COUNT(*) FROM public.actions a2
+        WHERE a2.movie_id = m.id AND a2.want_to_watch = true
+      ))::FLOAT
+  ) DESC
   LIMIT 1;
 END;
 $$;
