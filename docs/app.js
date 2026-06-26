@@ -33,6 +33,11 @@ const state = {
   pendingFriend: null,   // from invite link
 };
 
+/* Force HTTPS so HTTP images aren't blocked on the HTTPS page */
+function safeImgUrl(url) {
+  return url ? url.replace(/^http:\/\//i, 'https://') : url;
+}
+
 /* ══════════════════════════════════════════════
    DOM HELPERS
 ══════════════════════════════════════════════ */
@@ -412,8 +417,9 @@ function renderMovieCard(movie) {
   /* Poster */
   const posterEl = $('#card-poster');
   if (movie.preview_url) {
-    posterEl.src = movie.preview_url;
+    posterEl.src = safeImgUrl(movie.preview_url);
     posterEl.style.display = 'block';
+    posterEl.onerror = () => { posterEl.style.display = 'none'; };
   } else {
     posterEl.src = '';
     posterEl.style.display = 'none';
@@ -436,9 +442,12 @@ function createMovieMini(movie, posterUrl) {
   const el = document.createElement('div');
   el.className = 'movie-mini';
 
-  if (posterUrl) {
+  const safeUrl = posterUrl ? safeImgUrl(posterUrl) : '';
+  if (safeUrl) {
     el.innerHTML = `
-      <img class="movie-mini-poster" src="${posterUrl}" alt="${escHtml(movie.name)}" loading="lazy">
+      <img class="movie-mini-poster" src="${safeUrl}" alt="${escHtml(movie.name)}"
+           loading="lazy" referrerpolicy="no-referrer"
+           onerror="this.outerHTML='<div class=movie-mini-poster-placeholder>🎬</div>'">
       <div class="movie-mini-info">
         <div class="movie-mini-title">${escHtml(movie.name)}</div>
         <div class="movie-mini-year">${movie.year || ''}</div>
@@ -474,8 +483,10 @@ function createFriendItem(profile) {
    MOVIE MODAL
 ══════════════════════════════════════════════ */
 async function openMovieModal(movie, posterUrl, showRemove) {
-  $('#modal-poster').src = posterUrl || '';
-  toggle($('#modal-poster'), !!posterUrl);
+  const modalImg = $('#modal-poster');
+  modalImg.src = posterUrl ? safeImgUrl(posterUrl) : '';
+  modalImg.onerror = () => hide(modalImg);
+  toggle(modalImg, !!posterUrl);
 
   $('#modal-year').textContent     = movie.year || '';
   $('#modal-age').textContent      = movie.age_rating ? `${movie.age_rating}+` : '';
