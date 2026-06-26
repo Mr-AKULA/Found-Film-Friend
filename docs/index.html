@@ -7,7 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#7c3aed">
   <meta name="mobile-web-app-capable" content="yes">
@@ -300,6 +300,12 @@
           <h4 class="modal-section-label">Где посмотреть</h4>
           <div id="modal-watch-links" class="watch-links"></div>
         </div>
+        <!-- Rating buttons — visible when opened from a recommendation -->
+        <div id="modal-rate-row" class="modal-rate-row hidden">
+          <button id="modal-rate-dislike" class="btn btn-ghost">✗ Не интересно</button>
+          <button id="modal-rate-watched" class="btn btn-ghost">👁 Смотрел</button>
+          <button id="modal-rate-like" class="btn btn-primary">❤️ Хочу</button>
+        </div>
         <div class="modal-action-row">
           <button id="modal-remove-btn" class="btn btn-danger">Убрать из списка</button>
           <button id="modal-share-btn" class="btn btn-secondary btn-icon-text">
@@ -498,6 +504,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
