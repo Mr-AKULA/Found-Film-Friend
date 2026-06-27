@@ -50,6 +50,7 @@ const state = {
   sharingMovie:   null,   // movie being shared
   theme:          'dark', // active theme id
   lang:           'ru',   // 'ru' | 'en'
+  merging:        false,  // true during account merge — suppresses onAuthStateChange
 };
 
 /* ─── Init theme, lang & hints from localStorage ─── */
@@ -149,40 +150,46 @@ async function mergeAccounts(browserEmail, browserPassword) {
   const tgPassword = btoa(`fff_tg_${tgUser.id}_v1`).replace(/=/g, '');
   const tgUserId   = state.user.id;
 
+  /* Block onAuthStateChange during merge — intermediate sessions must not trigger UI */
+  state.merging = true;
+
   /* Sign in as browser account to verify credentials + get ID */
   const { data, error } = await sb.auth.signInWithPassword({
     email: browserEmail, password: browserPassword,
   });
   if (error) {
+    state.merging = false;
     showToast('Неверный email или пароль', 3000);
-    /* Restore TG session */
     await sb.auth.signInWithPassword({ email: `tg_${tgUser.id}@fff.app`, password: tgPassword });
     return false;
   }
 
   const browserUserId = data.user.id;
   if (browserUserId === tgUserId) {
+    state.merging = false;
     showToast('Это уже один и тот же аккаунт', 3000);
     return false;
   }
 
   /* Merge via Supabase function (SECURITY DEFINER — can touch auth.users) */
   const { error: mergeErr } = await sb.rpc('merge_accounts', {
-    from_user_id:       tgUserId,
-    to_user_id:         browserUserId,
-    p_telegram_id:      String(tgUser.id),
+    from_user_id:        tgUserId,
+    to_user_id:          browserUserId,
+    p_telegram_id:       String(tgUser.id),
     p_telegram_username: tgUser.username || null,
-    p_tg_password:      tgPassword,
+    p_tg_password:       tgPassword,
   });
 
   if (mergeErr) {
+    state.merging = false;
     showToast('Ошибка объединения: ' + mergeErr.message, 5000);
     await sb.auth.signInWithPassword({ email: `tg_${tgUser.id}@fff.app`, password: tgPassword });
     return false;
   }
 
+  /* Unblock and re-login — onAuthStateChange will fire and call onSignedIn */
+  state.merging = false;
   showToast('Аккаунты объединены! ⚠️ Пароль изменился — задай новый в настройках', 6000);
-  /* Re-login via TG — now finds browser account by telegram_id */
   await signInWithTelegram(tgUser);
   return true;
 }
@@ -247,6 +254,7 @@ async function initAuth() {
   if (IS_TG && TG.initDataUnsafe?.user) {
     TG.ready();
     sb.auth.onAuthStateChange(async (_event, session) => {
+      if (state.merging) return; // skip intermediate sessions during account merge
       if (session) await onSignedIn(session.user);
     });
     await signInWithTelegram(TG.initDataUnsafe.user);
