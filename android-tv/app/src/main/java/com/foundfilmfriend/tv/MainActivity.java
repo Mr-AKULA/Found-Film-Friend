@@ -13,6 +13,8 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import android.content.Intent;
+import android.net.Uri;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -98,6 +100,21 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 Log.d(TAG, "onPageFinished: " + url);
                 dismissSplash();
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                /* Внешние ссылки (кинокино и т.п.) — открывать в браузере TV */
+                if (!url.startsWith("https://mr-akula.github.io")) {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                    } catch (Exception e) {
+                        Log.e(TAG, "Cannot open URL: " + url);
+                    }
+                    return true;
+                }
+                return false;
             }
 
             @Override

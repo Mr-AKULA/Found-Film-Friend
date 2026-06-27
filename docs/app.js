@@ -1551,12 +1551,8 @@ function closeModal() {
    INLINE PLAYER
 ══════════════════════════════════════════════ */
 function openPlayer(url, title = '') {
-  if (IS_TG) {
-    /* Telegram Mini App — open in Telegram's built-in browser */
-    TG.openLink(url);
-    return;
-  }
-  /* Web browser — inline iframe player */
+  if (IS_TG) { TG.openLink(url); return; }
+  if (IS_TV) { window.open(url, '_blank'); return; } // TV: открыть в браузере TV
   $('#player-iframe').src = url;
   $('#player-title').textContent = title;
   show($('#player-modal'));
