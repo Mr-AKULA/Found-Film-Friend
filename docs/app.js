@@ -198,7 +198,8 @@ async function mergeAccounts(browserEmail, browserPassword) {
 
   mergeStatus('Шаг 3/3: вхожу в объединённый аккаунт...');
   state.merging = false;
-  await signInWithTelegram(tgUser);
+  /* We're already signed in as the browser account — use that session directly */
+  await onSignedIn(data.user);
   return true;
 }
 
