@@ -126,7 +126,7 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 Log.d(TAG, "onPageFinished: " + url);
-                if (url != null && url.startsWith("https://mr-akula.github.io")) {
+                if (APP_URL.equals(url)) {
                     inExternalPage = false;
                 }
                 dismissSplash();

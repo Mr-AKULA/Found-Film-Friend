@@ -1494,8 +1494,8 @@ async function openMovieModal(movie, posterUrl, showRemove, recId = null) {
   const watchLinks   = $('#modal-watch-links');
   watchLinks.innerHTML = '';
 
-  /* Kinobox — direct player embed by Kinopoisk ID (no redirects, no popups) */
-  const kkUrl = `https://kinobox.tv/video/player?kinopoisk=${movie.id}`;
+  /* Self-hosted player page with Kinobox embed by Kinopoisk ID */
+  const kkUrl = `https://mr-akula.github.io/Found-Film-Friend/player.html?id=${movie.id}`;
   const kkBtn  = document.createElement('button');
   kkBtn.className = 'watch-link-btn watch-link-free';
   kkBtn.innerHTML = '<span class="watch-link-icon">▶</span> Смотреть бесплатно';
