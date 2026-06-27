@@ -150,16 +150,20 @@ async function mergeAccounts(browserEmail, browserPassword) {
   const tgPassword = btoa(`fff_tg_${tgUser.id}_v1`).replace(/=/g, '');
   const tgUserId   = state.user.id;
 
+  /* Close settings so toasts are visible */
+  closeSettings();
+
   /* Block onAuthStateChange during merge — intermediate sessions must not trigger UI */
   state.merging = true;
 
-  /* Sign in as browser account to verify credentials + get ID */
+  /* Step 1: verify browser account credentials */
+  showToast('Проверяю данные...', 2000);
   const { data, error } = await sb.auth.signInWithPassword({
     email: browserEmail, password: browserPassword,
   });
   if (error) {
     state.merging = false;
-    showToast('Неверный email или пароль', 3000);
+    showToast('Неверный email или пароль: ' + error.message, 4000);
     await sb.auth.signInWithPassword({ email: `tg_${tgUser.id}@fff.app`, password: tgPassword });
     return false;
   }
@@ -171,7 +175,8 @@ async function mergeAccounts(browserEmail, browserPassword) {
     return false;
   }
 
-  /* Merge via Supabase function (SECURITY DEFINER — can touch auth.users) */
+  /* Step 2: merge data via RPC */
+  showToast('Объединяю данные...', 3000);
   const { error: mergeErr } = await sb.rpc('merge_accounts', {
     from_user_id:        tgUserId,
     to_user_id:          browserUserId,
@@ -182,14 +187,14 @@ async function mergeAccounts(browserEmail, browserPassword) {
 
   if (mergeErr) {
     state.merging = false;
-    showToast('Ошибка объединения: ' + mergeErr.message, 5000);
+    showToast('Ошибка: ' + mergeErr.message, 6000);
     await sb.auth.signInWithPassword({ email: `tg_${tgUser.id}@fff.app`, password: tgPassword });
     return false;
   }
 
-  /* Unblock and re-login — onAuthStateChange will fire and call onSignedIn */
+  /* Step 3: re-login as merged account */
   state.merging = false;
-  showToast('Аккаунты объединены! ⚠️ Пароль изменился — задай новый в настройках', 6000);
+  showToast('Готово! Аккаунты объединены', 4000);
   await signInWithTelegram(tgUser);
   return true;
 }
