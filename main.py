@@ -18,6 +18,7 @@ import time
 
 BOT_USERNAME = Settings.BOT_USERNAME
 API_TOKEN = Settings.token
+WEB_APP_URL = 'https://mr-akula.github.io/Found-Film-Friend/'
 
 # Инициализация бота
 bot = telebot.TeleBot(API_TOKEN)
@@ -268,7 +269,9 @@ def get_main_keyboard():
     btn_dislike = types.KeyboardButton('👎')
     btn_menu = types.KeyboardButton('📺')
     btn_like = types.KeyboardButton('👍')
+    btn_app = types.KeyboardButton('🎬 Открыть FFF', web_app=types.WebAppInfo(url=WEB_APP_URL))
     markup.add(btn_dislike, btn_menu, btn_like)
+    markup.add(btn_app)
     return markup
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('recommend_'))
@@ -1454,12 +1457,21 @@ def handle_start(message):
     # Сценарий 5: Обычный старт без параметров
     else:
         if status_old_user:
+            inline = types.InlineKeyboardMarkup()
+            inline.add(types.InlineKeyboardButton(
+                '🎬 Открыть Found Film Friend',
+                web_app=types.WebAppInfo(url=WEB_APP_URL)
+            ))
             bot.send_message(
                 message.chat.id,
-                'Давай выберем фильм?',
+                '👋 Привет! Открывай приложение и свайпай фильмы 🍿',
+                reply_markup=inline
+            )
+            bot.send_message(
+                message.chat.id,
+                'Или используй кнопку ниже 👇',
                 reply_markup=get_main_keyboard()
             )
-            send_random_movie(message)
         else:
             # Проверка выполнения
             def_find_date_of_birth(

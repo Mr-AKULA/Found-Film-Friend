@@ -12,6 +12,16 @@
 const SUPABASE_URL     = 'https://swgvbagncvbkoyztrimz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_0NHWJrnl1boP_Ma0hLH9Ew_m684L-5J';
 
+/* ─── Telegram Mini App ─── */
+const TG    = window.Telegram?.WebApp;
+const IS_TG = !!(TG?.initDataUnsafe?.user);
+if (IS_TG) {
+  TG.expand();                      // полный экран
+  TG.disableVerticalSwipes?.();     // не конфликтовать с нашими свайпами
+  TG.setHeaderColor?.('#0a0a0f');
+  TG.setBackgroundColor?.('#0a0a0f');
+}
+
 /* ─── Supabase client ─── */
 /* persistSession:false keeps session in JS memory only — avoids 401 errors
    caused by Firefox/Edge Tracking Prevention silently blocking localStorage */
@@ -83,6 +93,44 @@ function showToast(msg, duration = 2500) {
 /* ══════════════════════════════════════════════
    AUTH
 ══════════════════════════════════════════════ */
+
+async function signInWithTelegram(tgUser) {
+  const email    = `tg_${tgUser.id}@fff.app`;
+  const password = btoa(`fff_tg_${tgUser.id}_v1`).replace(/=/g, '');
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  if (!error && data.user) {
+    /* Existing user — refresh TG username in profile */
+    await sb.from('profiles').update({
+      telegram_id:       String(tgUser.id),
+      telegram_username: tgUser.username || null,
+    }).eq('id', data.user.id);
+    await onSignedIn(data.user);
+    return;
+  }
+
+  /* First time — create account */
+  const displayName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ')
+                      || tgUser.username || 'Пользователь';
+
+  const { data: up, error: upErr } = await sb.auth.signUp({ email, password });
+  if (upErr) { console.error('[TG] signup:', upErr.message); showScreen('auth'); return; }
+
+  if (up.user) {
+    await sb.from('profiles').upsert({
+      id:                up.user.id,
+      display_name:      displayName,
+      telegram_id:       String(tgUser.id),
+      telegram_username: tgUser.username || null,
+    }, { onConflict: 'id' });
+
+    /* signUp fires SIGNED_IN via onAuthStateChange → onSignedIn is called there */
+    if (up.session) await onSignedIn(up.user);
+    else showToast('Аккаунт создан, входим...', 2000);
+  }
+}
+
 async function initAuth() {
   /* Check for invite param ?invite=UUID — also persist in sessionStorage
      so it survives email-confirmation redirects that lose the URL params */
@@ -139,10 +187,16 @@ async function initAuth() {
     return;
   }
 
+  /* Telegram Mini App — auto-login, skip email form */
+  if (IS_TG && TG.initDataUnsafe?.user) {
+    await signInWithTelegram(TG.initDataUnsafe.user);
+    /* onAuthStateChange below handles SIGNED_IN for new users */
+  }
+
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await onSignedIn(session.user);
-  } else {
+  } else if (!IS_TG) {
     showScreen('auth');
   }
 
@@ -863,6 +917,7 @@ const App = {
     const movie = state.currentMovie;
     const card  = $('#movie-card');
 
+    TG?.HapticFeedback?.impactOccurred(liked ? 'medium' : 'light');
     card.classList.add(liked ? 'swipe-out-right' : 'swipe-out-left');
     state.lastAction  = { movie, type: liked ? 'like' : 'dislike' };
     state.currentMovie = null;
@@ -884,6 +939,7 @@ const App = {
     const movie = state.currentMovie;
     const card  = $('#movie-card');
 
+    TG?.HapticFeedback?.notificationOccurred('success');
     card.classList.add('swipe-out-up');
     state.lastAction  = { movie, type: 'watched' };
     state.currentMovie = null;
