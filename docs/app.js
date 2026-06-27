@@ -16,11 +16,20 @@ const SUPABASE_ANON_KEY = 'sb_publishable_0NHWJrnl1boP_Ma0hLH9Ew_m684L-5J';
 const TG    = window.Telegram?.WebApp;
 const IS_TG = !!(TG?.initDataUnsafe?.user);
 if (IS_TG) {
-  TG.expand();                      // полный экран
-  TG.disableVerticalSwipes?.();     // не конфликтовать с нашими свайпами
+  TG.expand();
+  TG.disableVerticalSwipes?.();
   TG.setHeaderColor?.('#0a0a0f');
   TG.setBackgroundColor?.('#0a0a0f');
 }
+
+/* DEBUG — удалить после диагностики */
+(function() {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;z-index:99999;padding:6px 10px;font-size:11px;font-family:monospace;word-break:break-all;';
+  const u = TG?.initDataUnsafe?.user;
+  d.textContent = `v11 | TG:${!!window.Telegram?.WebApp} | IS_TG:${IS_TG} | user:${u ? u.id+'/'+u.first_name : 'null'}`;
+  document.addEventListener('DOMContentLoaded', () => document.body.appendChild(d));
+})();
 
 /* ─── Supabase client ─── */
 /* persistSession:false keeps session in JS memory only — avoids 401 errors
