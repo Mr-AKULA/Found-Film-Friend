@@ -766,6 +766,56 @@ html.show-hints .swipe-hint { display: block; }
 }
 .watch-link-btn.watch-link-free:hover { background: rgba(124,58,237,0.25); border-color: var(--accent); }
 .watch-link-icon { font-size: 20px; }
+.watch-link-btn.watch-link-free { cursor: pointer; }
+
+/* ── Player Modal ── */
+.player-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+.player-modal.hidden { display: none; }
+
+.player-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+  gap: 12px;
+}
+.player-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e0e0f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.player-close {
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.player-close:hover { background: rgba(255,255,255,0.2); }
+.player-iframe {
+  width: 100%;
+  flex: 1;
+  border: none;
+  background: #000;
+}
 
 /* ══════════════════════════════════════════════
    FRIEND REQUEST BANNER

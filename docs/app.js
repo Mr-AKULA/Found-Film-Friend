@@ -197,6 +197,8 @@ async function mergeAccounts(browserEmail, browserPassword) {
   }
 
   mergeStatus('Шаг 3/3: вхожу в объединённый аккаунт...');
+  /* Update browser account password to TG-derived so auto-login works next time */
+  await sb.auth.updateUser({ password: tgPassword });
   state.merging = false;
   /* We're already signed in as the browser account — use that session directly */
   await onSignedIn(data.user);
@@ -1419,16 +1421,15 @@ async function openMovieModal(movie, posterUrl, showRemove, recId = null) {
   const watchLinks   = $('#modal-watch-links');
   watchLinks.innerHTML = '';
 
-  /* kinokino.vip — free streaming, always shown */
+  /* kinokino.vip — free streaming, opens in inline player */
   const kpPath = (movie.kp_type === 'tv-series' || movie.kp_type === 'animated-series')
     ? 'series' : 'film';
-  const kkLink = document.createElement('a');
-  kkLink.className = 'watch-link-btn watch-link-free';
-  kkLink.href      = `https://www.kinokino.vip/${kpPath}/${movie.id}/`;
-  kkLink.target    = '_blank';
-  kkLink.rel       = 'noopener';
-  kkLink.innerHTML = '<span class="watch-link-icon">▶</span> Смотреть бесплатно';
-  watchLinks.appendChild(kkLink);
+  const kkUrl  = `https://www.kinopoisk.vip/${kpPath}/${movie.id}/`;
+  const kkBtn  = document.createElement('button');
+  kkBtn.className = 'watch-link-btn watch-link-free';
+  kkBtn.innerHTML = '<span class="watch-link-icon">▶</span> Смотреть бесплатно';
+  kkBtn.addEventListener('click', () => openPlayer(kkUrl, movie.name));
+  watchLinks.appendChild(kkBtn);
 
   const { data: links } = await sb
     .from('watchability')
@@ -1471,6 +1472,23 @@ async function openMovieModal(movie, posterUrl, showRemove, recId = null) {
 function closeModal() {
   hide($('#movie-modal'));
   document.body.classList.remove('modal-open');
+}
+
+/* ══════════════════════════════════════════════
+   INLINE PLAYER
+══════════════════════════════════════════════ */
+function openPlayer(url, title = '') {
+  $('#player-iframe').src  = url;
+  $('#player-title').textContent = title;
+  show($('#player-modal'));
+  /* Tell Telegram to allow fullscreen */
+  TG?.requestFullscreen?.();
+}
+
+function closePlayer() {
+  hide($('#player-modal'));
+  $('#player-iframe').src = '';
+  TG?.exitFullscreen?.();
 }
 
 /* ══════════════════════════════════════════════
@@ -1778,6 +1796,9 @@ document.addEventListener('DOMContentLoaded', () => {
       closeShareSheet();
     } catch {}
   });
+
+  /* Player */
+  $('#player-close')?.addEventListener('click', closePlayer);
 
   /* Friend picker */
   $('#picker-close')?.addEventListener('click',   () => hide($('#friend-picker')));
