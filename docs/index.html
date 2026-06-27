@@ -7,7 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=21">
+  <link rel="stylesheet" href="style.css?v=22">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
   <meta name="theme-color" content="#7c3aed">
@@ -212,6 +212,23 @@
         </div>
       </div>
 
+      <!-- ── SEARCH ── -->
+      <div id="page-search" class="page">
+        <h2 class="page-title">Поиск</h2>
+        <div class="search-wrap">
+          <input id="search-input" class="search-input" type="search" placeholder="Название фильма или сериала...">
+        </div>
+        <div id="search-results" class="movie-grid"></div>
+        <div id="search-empty" class="state hidden">
+          <div class="state-icon">🔍</div>
+          <h3 id="search-empty-title">Начни вводить название</h3>
+          <p id="search-empty-sub">Поиск по 38 000+ фильмам и сериалам</p>
+        </div>
+        <div id="search-loading" class="state hidden">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
       <!-- ── FRIENDS ── -->
       <div id="page-friends" class="page">
         <h2 class="page-title">Друзья</h2>
@@ -278,6 +295,12 @@
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
         </svg>
         <span data-i18n="nav_watchlist">Список</span>
+      </button>
+      <button class="nav-btn" data-page="search">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <span>Поиск</span>
       </button>
       <button class="nav-btn" data-page="friends">
         <div class="nav-icon-wrap">
@@ -588,6 +611,6 @@
   </div>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="app.js?v=21"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>

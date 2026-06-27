@@ -959,6 +959,7 @@ const App = {
     if (page === 'watchlist') App.loadWatchlist();
     if (page === 'friends')   App.loadFriends();
     if (page === 'browse' && !state.currentMovie) App.loadNextMovie();
+    if (page === 'search')    { App.searchMovies(''); setTimeout(() => $('#search-input')?.focus(), 100); }
 
     /* Сообщаем Android TV какой экран активен */
     if (IS_TV && window.TVBridge) {
@@ -1134,6 +1135,57 @@ const App = {
     });
     if (rendered === 0) show(empty);
     else if (IS_TV) { const f = grid.querySelector('.movie-mini'); if (f) f.focus(); }
+  },
+
+  /* ─── SEARCH ─── */
+  async searchMovies(query) {
+    const grid    = $('#search-results');
+    const empty   = $('#search-empty');
+    const loading = $('#search-loading');
+    const title   = $('#search-empty-title');
+    const sub     = $('#search-empty-sub');
+
+    grid.innerHTML = '';
+    hide(empty);
+
+    if (!query || query.length < 2) {
+      hide(loading);
+      title.textContent = 'Начни вводить название';
+      sub.textContent   = 'Поиск по 38 000+ фильмам и сериалам';
+      show(empty);
+      return;
+    }
+
+    show(loading);
+
+    const { data: movies } = await sb.from('movies')
+      .select('id, name, year, age_rating, description, slogan, kp_type')
+      .ilike('name', `%${query}%`)
+      .order('priority', { ascending: false })
+      .limit(24);
+
+    hide(loading);
+
+    if (!movies || movies.length === 0) {
+      title.textContent = `Ничего не найдено`;
+      sub.textContent   = `«${query}» — попробуй другое название`;
+      show(empty);
+      return;
+    }
+
+    const ids = movies.map(m => m.id);
+    const { data: posters } = await sb.from('posters')
+      .select('movie_id, preview_url').in('movie_id', ids);
+    const posterMap = Object.fromEntries((posters || []).map(p => [p.movie_id, p.preview_url]));
+
+    movies.forEach(m => {
+      const poster = posterMap[m.id] || '';
+      const el = createMovieMini(m, poster);
+      el.addEventListener('click', () => openMovieModal(m, poster, false));
+      grid.appendChild(el);
+    });
+
+    if (IS_TV) { const f = grid.querySelector('.movie-mini'); if (f) f.focus(); }
   },
 
   /* ─── FRIENDS ─── */
@@ -1937,6 +1989,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const title = el.querySelector('.movie-mini-title')?.textContent.toLowerCase() || '';
       el.style.display = (!q || title.includes(q)) ? '' : 'none';
     });
+  });
+
+  /* Global movie search with debounce */
+  let _searchTimer = null;
+  $('#search-input')?.addEventListener('input', e => {
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(() => App.searchMovies(e.target.value.trim()), 350);
   });
 
   /* Keyboard shortcuts + TV D-pad spatial navigation */
