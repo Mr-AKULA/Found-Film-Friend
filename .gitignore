@@ -2,6 +2,7 @@
 /Settings.py
 export_to_supabase.py
 upload_posters.py
+upload_kp_type.py
 migrate_posters_to_cdn.py
 clear_storage.py
 check_posters.py
