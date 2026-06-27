@@ -1598,6 +1598,24 @@ body.card-dragging .actions-group {
   letter-spacing: 0.05em;
 }
 
+/* About section */
+.settings-about { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; }
+.settings-about-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.settings-about-label { color: rgba(255,255,255,0.45); }
+.settings-about-link {
+  color: #a78bfa;
+  text-decoration: none;
+  font-weight: 500;
+}
+.settings-about-link:hover { color: #c4b5fd; text-decoration: underline; }
+.settings-about-version { color: rgba(255,255,255,0.35); font-size: 12px; }
+
 /* Danger section */
 .settings-section-danger { padding-top: 20px; }
 .settings-signout-btn {
