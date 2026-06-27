@@ -8,8 +8,9 @@
 [![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-Live-222?style=for-the-badge&logo=github&logoColor=white)](https://mr-akula.github.io/Found-Film-Friend/)
 [![PWA](https://img.shields.io/badge/PWA-Ready-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)](https://mr-akula.github.io/Found-Film-Friend/)
 [![Telegram](https://img.shields.io/badge/Telegram_Mini_App-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/MrAKULA_bot)
+[![Android TV](https://img.shields.io/badge/Android_TV-APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Mr-AKULA/Found-Film-Friend/releases/tag/v1.0-tv)
 
-[🌐 Открыть веб-версию](https://mr-akula.github.io/Found-Film-Friend/) • [✈️ Открыть в Telegram](https://t.me/MrAKULA_bot)
+[🌐 Веб-версия](https://mr-akula.github.io/Found-Film-Friend/) • [✈️ Telegram](https://t.me/MrAKULA_bot) • [📺 Скачать TV APK](https://github.com/Mr-AKULA/Found-Film-Friend/releases/download/v1.0-tv/FoundFilmFriend-TV.apk)
 
 </div>
 
@@ -25,7 +26,7 @@
 |-----------|--------|------------|
 | 🌐 Web App (PWA) | ✅ Запущен | Vanilla JS, Supabase, GitHub Pages |
 | ✈️ Telegram Mini App | ✅ Запущен | Telegram WebApp API, авто-логин |
-| 📱 Android | 🚧 В разработке | Java, Retrofit, Supabase |
+| 📺 Android TV | ✅ Запущен | Java, WebView, D-pad управление |
 
 ---
 
@@ -57,13 +58,18 @@
 
 **Фильтры и персонализация**
 - Горизонтальная панель жанров — фильтрует ленту на лету
+- Быстрые фильтры 🎬 Фильмы / 🎨 Мульты
 - Онбординг — при первом входе выбор любимых жанров
 - Возрастной фильтр — фильмы подбираются под возраст пользователя
+
+**Просмотр**
+- Кнопка **▶ Смотреть бесплатно** в карточке фильма — встроенный плеер (kinokino.vip)
+- Ссылки на стриминговые сервисы (Кинопоиск, Иви и др.)
 
 **Список желаний**
 - Все лайкнутые фильмы с постерами
 - Живой поиск по названию
-- Детальная карточка с описанием и ссылками «Где посмотреть»
+- Детальная карточка с описанием и ссылками
 - Удаление из списка
 
 **Друзья и рекомендации**
@@ -82,8 +88,14 @@
 **PWA / Telegram Mini App**
 - Устанавливается на телефон как обычное приложение
 - Открывается прямо внутри Telegram — без App Store
-- Haptic feedback при свайпах (вибрация на iOS/Android)
+- Haptic feedback при свайпах
 - Офлайн-оболочка (service worker)
+
+**📺 Android TV**
+- D-pad управление: ← скип, → лайк, ↑ смотрел
+- Вход через 6-значный код с телефона — без клавиатуры
+- Автоматический вход после первой авторизации
+- Нативный сплэш-экран пока грузится страница
 
 ---
 
@@ -91,39 +103,30 @@
 
 ### Telegram Mini App (рекомендуется)
 
-Откройте бота [@MrAKULA_bot](https://t.me/MrAKULA_bot) и нажмите кнопку **🎬 Открыть FFF**. Авторизация происходит автоматически — никакого email или пароля.
+Откройте бота [@MrAKULA_bot](https://t.me/MrAKULA_bot) и нажмите кнопку **🎬 Открыть FFF**. Авторизация происходит автоматически.
 
 ### Браузер / ПК
 
-Перейдите на [mr-akula.github.io/Found-Film-Friend](https://mr-akula.github.io/Found-Film-Friend/), зарегистрируйтесь через email и пароль.
+Перейдите на [mr-akula.github.io/Found-Film-Friend](https://mr-akula.github.io/Found-Film-Friend/) и зарегистрируйтесь.
+
+### 📺 Android TV
+
+1. Скачайте [FoundFilmFriend-TV.apk](https://github.com/Mr-AKULA/Found-Film-Friend/releases/download/v1.0-tv/FoundFilmFriend-TV.apk)
+2. Установите: `adb install FoundFilmFriend-TV.apk`
+3. При запуске появится 6-значный код
+4. На телефоне: Настройки → **Войти на TV** → введите код
+5. TV войдёт в аккаунт автоматически
 
 ### Объединение аккаунтов
 
-Если вы начали в браузере, а потом открыли в Telegram (или наоборот) — у вас два отдельных аккаунта. Чтобы объединить их в один с сохранением всех данных:
+Если начали в браузере, а потом открыли в Telegram — два отдельных аккаунта. Чтобы объединить:
 
 1. Откройте Mini App в Telegram
-2. Нажмите на логотип **FFF** → откроется раздел настроек
-3. Прокрутите до раздела **«Объединить аккаунты»**
-4. Введите email и пароль от браузерного аккаунта
-5. Нажмите **Объединить**
+2. Нажмите на логотип **FFF** → Настройки
+3. Раздел **«Объединить аккаунты»** → введите email и пароль браузерного аккаунта
+4. Нажмите **Объединить**
 
-После объединения:
-- Все лайки из обоих аккаунтов сохраняются (без дублирования)
-- Список друзей объединяется
-- История рекомендаций сохраняется
-- TG-аккаунт удаляется, браузерный становится основным
-- Вход в Mini App по-прежнему происходит автоматически
-
-> ⚠️ После объединения пароль браузерного аккаунта изменяется на внутренний TG-пароль. Чтобы снова входить с браузера, задайте новый пароль в настройках → **«Вход с браузера / ПК»**.
-
-### Вход с браузера после Telegram
-
-Если вы используете Mini App, но хотите также заходить с компьютера:
-
-1. Откройте настройки в Mini App (логотип FFF)
-2. Раздел **«Вход с браузера / ПК»** — скопируйте свой email
-3. Задайте пароль в том же разделе
-4. Войдите на сайте через этот email + пароль
+Все лайки, друзья и рекомендации объединятся без потерь.
 
 ---
 
@@ -137,23 +140,27 @@
 3. В docs/app.js замените:
    SUPABASE_URL      = 'https://xxxxxxxx.supabase.co'
    SUPABASE_ANON_KEY = 'ваш_anon_key'
-4. Settings → Pages → Source: /docs
+4. Settings → Pages → Source: branch AKULA / docs
 5. Auth → URL Configuration:
    Site URL: https://ВАШ-НИК.github.io/Found-Film-Friend/
-6. Auth → Settings → отключите "Confirm email" (для Telegram авто-логина)
-7. Загрузите фильмы через export_to_supabase.py
+6. Auth → Settings → отключите "Confirm email"
 ```
 
 ### ✈️ Telegram Mini App
 
 ```
-1. Запустите бота: python main.py
-2. В @BotFather:
-   /mybots → ваш бот → Bot Settings → Menu Button
-   → URL: https://ВАШ-НИК.github.io/Found-Film-Friend/
-   → Текст: 🎬 Found Film Friend
+1. python main.py
+2. В @BotFather → /mybots → Bot Settings → Menu Button
+   URL: https://ВАШ-НИК.github.io/Found-Film-Friend/
 3. Пользователь открывает бота → нажимает кнопку меню → Mini App
-4. Авторизация происходит автоматически через Telegram
+```
+
+### 📺 Android TV APK
+
+```
+1. cd android-tv
+2. ./gradlew assembleDebug
+3. adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ---
@@ -173,25 +180,26 @@ movies
 actions          (user_id, movie_id, want_to_watch, watched)
 friends          (user_one, user_two, status)
 recommendations  (from_user, to_user, movie_id, seen)
-referrals
+tv_sessions      (code, user_id, activated, access_token, refresh_token)
 ```
 
 ### Row Level Security
 
 - Фильмы / постеры / жанры — публичное чтение
-- `actions` — только свои записи (+ liked записи видны друзьям для общих фильмов)
+- `actions` — только свои записи (+ видны друзьям для общих фильмов)
 - `friends` — видят только участники дружбы
 - `recommendations` — видят только отправитель и получатель
+- `tv_sessions` — INSERT любой, SELECT только неактивированные; токены доступны только через RPC
 - `profiles` — публичное чтение, запись только своего
 
-### RPC `get_next_movie(p_user_id, p_genre_ids)`
+### RPC функции
 
-PostgreSQL-функция с `WITH`-запросами. Выбирает один непросмотренный фильм:
-1. Исключает уже оценённые (`actions`)
-2. Фильтрует по возрасту пользователя
-3. Фильтрует по выбранным жанрам (если передан `p_genre_ids`)
-4. Требует наличия постера
-5. Ранжирует по формуле 3-сигнального скора
+| Функция | Назначение |
+|---------|-----------|
+| `get_next_movie(p_user_id, p_genre_ids)` | Следующий фильм по 3-сигнальному скору |
+| `merge_accounts(from, to, ...)` | Слияние TG и браузерного аккаунтов |
+| `activate_tv_session(code, access_token, refresh_token)` | Телефон активирует TV-сессию |
+| `claim_tv_session(code)` | TV забирает токены (атомарно: читает + удаляет) |
 
 ---
 
@@ -205,14 +213,19 @@ Found_Film_Friend/
 │   ├── app.js                  ← Логика + Supabase + Telegram WebApp API
 │   ├── manifest.json           ← PWA манифест
 │   ├── sw.js                   ← Service Worker
-│   ├── icon-192.png            ← PWA иконка
-│   ├── icon-512.png            ← PWA иконка (maskable)
+│   ├── icon-192.png / icon-512.png ← PWA иконки
 │   └── supabase.sql            ← Схема БД + RPC функции
 │
-├── 📄 main.py                  ← Telegram Bot (запускает Mini App)
-├── 📄 sql_queries.py           ← SQL запросы
-├── 📄 export_to_supabase.py    ← Миграция SQLite → Supabase
-└── 📄 movies.db                ← SQLite (локальная копия)
+├── 📁 android-tv/              ← Android TV приложение
+│   ├── app/src/main/
+│   │   ├── java/.../MainActivity.java  ← WebView + D-pad + TVBridge
+│   │   └── AndroidManifest.xml
+│   ├── build.gradle
+│   └── gradle.properties
+│
+├── 📄 FoundFilmFriend-TV.apk   ← Собранный APK
+├── 📄 main.py                  ← Telegram Bot
+└── 📄 supabase.sql             ← Схема БД
 ```
 
 ---
@@ -220,14 +233,19 @@ Found_Film_Friend/
 ## Технологии
 
 **Web App / Mini App:**
-- Vanilla JS (без фреймворков) — 0 зависимостей в рантайме
+- Vanilla JS — 0 зависимостей в рантайме
 - `Supabase JS SDK v2` — auth + database + RPC
-- `Telegram WebApp JS API` — авто-логин, haptic feedback, полный экран
-- CSS Custom Properties + CSS Animations + PWA Service Worker
+- `Telegram WebApp JS API` — авто-логин, haptic feedback
+- CSS Custom Properties + Animations + PWA Service Worker
+
+**Android TV:**
+- Java + Android WebView — нативная обёртка
+- `JavascriptInterface` — двусторонний мост JS ↔ Java
+- D-pad перехватывается только на нужных экранах (TVBridge)
+- Вход через паiring-код без клавиатуры
 
 **Telegram Bot:**
 - `pyTelegramBotAPI` — запуск Mini App через кнопку меню
-- Реферальные ссылки с параметрами
 
 ---
 
@@ -247,8 +265,10 @@ Found_Film_Friend/
 - [x] PWA — установка на телефон
 - [x] Рекомендации между друзьями
 - [x] Haptic feedback в Mini App
-- [ ] Android приложение
-- [ ] Уведомления о новых совпадениях
+- [x] Встроенный плеер (kinokino.vip)
+- [x] Android TV приложение с D-pad управлением
+- [x] TV вход через pairing-код с телефона
+- [ ] Push-уведомления о новых совпадениях
 - [ ] Групповые сессии просмотра
 
 ---
