@@ -1478,11 +1478,15 @@ function closeModal() {
    INLINE PLAYER
 ══════════════════════════════════════════════ */
 function openPlayer(url, title = '') {
-  $('#player-iframe').src  = url;
+  if (IS_TG) {
+    /* Telegram Mini App — open in Telegram's built-in browser */
+    TG.openLink(url);
+    return;
+  }
+  /* Web browser — inline iframe player */
+  $('#player-iframe').src = url;
   $('#player-title').textContent = title;
   show($('#player-modal'));
-  /* Tell Telegram to allow fullscreen */
-  TG?.requestFullscreen?.();
 }
 
 function closePlayer() {
