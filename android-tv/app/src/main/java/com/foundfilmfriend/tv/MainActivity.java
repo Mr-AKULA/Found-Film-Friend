@@ -26,22 +26,22 @@ public class MainActivity extends Activity {
     private static final String APP_URL = "https://mr-akula.github.io/Found-Film-Friend/";
     private static final String TAG     = "FFF_TV";
 
-    private WebView  webView;
-    private TextView splash;
-    private boolean  splashDismissed = false;
+    private WebView     webView;
+    private FrameLayout root;
+    private TextView    splash;
+    private View        fullscreenView;
+    private WebChromeClient.CustomViewCallback fullscreenCallback;
+    private boolean     splashDismissed  = false;
     private volatile boolean inExternalPage = false;
-    private final Handler  handler  = new Handler(Looper.getMainLooper());
-    private final TVBridge tvBridge = new TVBridge();
+    private final Handler   handler  = new Handler(Looper.getMainLooper());
+    private final TVBridge  tvBridge = new TVBridge();
 
     class TVBridge {
         @JavascriptInterface
-        public void onScreenChanged(String screen, boolean hasMovie) {
-            /* kept for compatibility — no longer used for key routing */
-        }
+        public void onScreenChanged(String screen, boolean hasMovie) { /* kept for compatibility */ }
 
         @JavascriptInterface
         public void openUrl(String url) {
-            /* Load streaming page inside our WebView — no external browser needed */
             runOnUiThread(() -> {
                 inExternalPage = true;
                 webView.loadUrl(url);
@@ -63,9 +63,8 @@ public class MainActivity extends Activity {
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         );
 
-        /* ── Root: WebView + splash overlay ── */
-        FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(0xFF0a0a0f);
+        root = new FrameLayout(this);
+        root.setBackgroundColor(0xFF000000);
 
         webView = new WebView(this);
         webView.setBackgroundColor(0xFF0a0a0f);
@@ -86,7 +85,6 @@ public class MainActivity extends Activity {
 
         setContentView(root);
 
-        /* ── WebView settings ── */
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -97,13 +95,37 @@ public class MainActivity extends Activity {
         s.setUserAgentString(s.getUserAgentString() + " FFF-AndroidTV/1.0");
 
         webView.addJavascriptInterface(tvBridge, "TVBridge");
-        webView.setWebChromeClient(new WebChromeClient());
-        webView.setWebViewClient(new WebViewClient() {
 
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onShowCustomView(View view, CustomViewCallback callback) {
+                if (fullscreenView != null) { callback.onCustomViewHidden(); return; }
+                fullscreenView    = view;
+                fullscreenCallback = callback;
+                webView.setVisibility(View.GONE);
+                root.addView(fullscreenView, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT));
+                getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+            }
+
+            @Override
+            public void onHideCustomView() {
+                if (fullscreenView == null) return;
+                root.removeView(fullscreenView);
+                fullscreenView = null;
+                fullscreenCallback.onCustomViewHidden();
+                fullscreenCallback = null;
+                webView.setVisibility(View.VISIBLE);
+            }
+        });
+
+        webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
                 Log.d(TAG, "onPageFinished: " + url);
-                /* Back on our app — restore D-pad interception */
                 if (url != null && url.startsWith("https://mr-akula.github.io")) {
                     inExternalPage = false;
                 }
@@ -112,8 +134,7 @@ public class MainActivity extends Activity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                /* Let WebView handle all URLs — streaming pages load inside WebView */
-                return false;
+                return false; // Load everything inside WebView
             }
 
             @Override
@@ -126,14 +147,11 @@ public class MainActivity extends Activity {
             }
         });
 
-        /* Fallback: hide splash after 15s no matter what */
         handler.postDelayed(this::dismissSplash, 15000);
 
         webView.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
-
-            /* On streaming page — pass D-pad through so player can use it */
-            if (inExternalPage) return false;
+            if (inExternalPage) return false; // Player handles D-pad natively
 
             String jsKey = null;
             switch (keyCode) {
@@ -165,9 +183,17 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
-            webView.goBack();
-            return true;
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (fullscreenView != null) {
+                // Exit fullscreen video first
+                if (fullscreenCallback != null) fullscreenCallback.onCustomViewHidden();
+                root.removeView(fullscreenView);
+                fullscreenView = null;
+                fullscreenCallback = null;
+                webView.setVisibility(View.VISIBLE);
+                return true;
+            }
+            if (webView.canGoBack()) { webView.goBack(); return true; }
         }
         return super.onKeyDown(keyCode, event);
     }
