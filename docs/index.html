@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Found Film Friend — Свайп фильмы вместе с друзьями</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+  <meta name="theme-color" content="#7c3aed">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <script src="supabase.min.js"></script>
+</head>
+<body>
+
+  <!-- ══════════════ AUTH SCREEN ══════════════ -->
+  <div id="auth-screen" class="screen">
+    <div class="auth-bg"></div>
+    <div class="auth-container">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">🎬</div>
+        <h1 class="auth-logo-title">Found Film Friend</h1>
+        <p class="auth-logo-sub">Свайпай фильмы. Смотри с друзьями.</p>
+      </div>
+
+      <!-- Login -->
+      <div id="login-form" class="auth-form">
+        <h2 class="form-title">Вход</h2>
+        <div class="input-group">
+          <label class="input-label">Email</label>
+          <input id="login-email" type="email" class="input" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Пароль</label>
+          <input id="login-password" type="password" class="input" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button id="login-btn" class="btn btn-primary">Войти</button>
+        <p class="auth-switch">Нет аккаунта? <a href="#" id="show-register">Зарегистрироваться →</a></p>
+        <p class="auth-switch"><a href="#" id="show-forgot">Забыли пароль?</a></p>
+      </div>
+
+      <!-- Register -->
+      <div id="register-form" class="auth-form hidden">
+        <h2 class="form-title">Регистрация</h2>
+        <div class="input-group">
+          <label class="input-label">Email</label>
+          <input id="reg-email" type="email" class="input" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Пароль</label>
+          <input id="reg-password" type="password" class="input" placeholder="Минимум 6 символов" autocomplete="new-password">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Дата рождения <span class="label-hint">(для фильтра по возрасту)</span></label>
+          <input id="reg-birthdate" type="date" class="input">
+        </div>
+        <button id="register-btn" class="btn btn-primary">Создать аккаунт</button>
+        <p class="auth-switch">Уже есть аккаунт? <a href="#" id="show-login">Войти →</a></p>
+      </div>
+
+      <!-- Forgot Password -->
+      <div id="forgot-form" class="auth-form hidden">
+        <h2 class="form-title">Сброс пароля</h2>
+        <p class="auth-hint">Введите email — пришлём ссылку для смены пароля.</p>
+        <div class="input-group">
+          <label class="input-label">Email</label>
+          <input id="forgot-email" type="email" class="input" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <button id="forgot-btn" class="btn btn-primary">Отправить ссылку</button>
+        <p class="auth-switch"><a href="#" id="show-login-2">← Назад к входу</a></p>
+      </div>
+
+      <!-- New Password (shown after clicking reset link in email) -->
+      <div id="newpass-form" class="auth-form hidden">
+        <h2 class="form-title">Новый пароль</h2>
+        <div class="input-group">
+          <label class="input-label">Новый пароль</label>
+          <input id="newpass-password" type="password" class="input" placeholder="Минимум 6 символов" autocomplete="new-password">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Повторите пароль</label>
+          <input id="newpass-confirm" type="password" class="input" placeholder="Повторите пароль" autocomplete="new-password">
+        </div>
+        <button id="newpass-btn" class="btn btn-primary">Сохранить пароль</button>
+      </div>
+
+      <div id="auth-msg" class="auth-msg hidden"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ MAIN APP ══════════════ -->
+  <div id="app-screen" class="screen hidden">
+
+    <!-- Header -->
+    <header class="header">
+      <button id="logo-btn" class="header-logo">🎬 <span>FFF</span></button>
+      <button id="stats-btn" class="btn-icon" title="Статистика">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+      </button>
+      <button id="logout-btn" class="btn-icon" title="Выйти">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Pages -->
+    <main class="pages">
+
+      <!-- ── BROWSE ── -->
+      <div id="page-browse" class="page active">
+        <div id="browse-main">
+
+          <!-- Genre filter -->
+          <div id="genre-filter" class="genre-filter">
+            <div id="genre-pills" class="genre-pills"></div>
+          </div>
+
+          <div id="movie-card" class="movie-card" style="position:relative">
+            <div class="card-poster-wrap">
+              <img id="card-poster" class="card-poster" src="" alt="" referrerpolicy="no-referrer">
+              <div class="card-poster-gradient"></div>
+              <!-- swipe-down indicator -->
+              <div class="swipe-down-hint">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </div>
+            </div>
+            <div class="card-content">
+              <div class="card-tags">
+                <span id="card-year" class="tag tag-year"></span>
+                <span id="card-age" class="tag tag-age"></span>
+              </div>
+              <h2 id="card-title" class="card-title"></h2>
+              <p id="card-tagline" class="card-tagline"></p>
+              <p id="card-desc" class="card-desc"></p>
+            </div>
+          </div>
+
+          <div class="actions-group">
+            <div class="card-actions">
+              <button id="dislike-btn" class="action-btn action-dislike" title="Не интересно">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+              <button id="watched-btn" class="action-btn action-watched" title="Уже смотрел">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+              <button id="like-btn" class="action-btn action-like" title="Хочу посмотреть">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </button>
+            </div>
+            <p class="swipe-hint">← скип · 👁 смотрел · ❤️ хочу →</p>
+          </div>
+        </div>
+
+        <div id="browse-loading" class="state hidden">
+          <div class="spinner"></div>
+          <p>Подбираем фильм...</p>
+        </div>
+        <div id="browse-empty" class="state hidden">
+          <div class="state-icon">🎉</div>
+          <h3>Вы всё оценили!</h3>
+          <p>Скоро добавим новые фильмы. Пока загляните в свой список.</p>
+          <button class="btn btn-outline" onclick="App.navigate('watchlist')">Мой список</button>
+        </div>
+      </div>
+
+      <!-- ── WATCHLIST ── -->
+      <div id="page-watchlist" class="page">
+        <h2 class="page-title">Мой список</h2>
+        <div class="search-wrap">
+          <input id="watchlist-search" class="search-input" type="search" placeholder="Поиск по названию...">
+        </div>
+        <div id="watchlist-grid" class="movie-grid"></div>
+        <div id="watchlist-empty" class="state hidden">
+          <div class="state-icon">🎭</div>
+          <h3>Список пуст</h3>
+          <p>Ставьте ❤️ фильмам в разделе «Смотреть» — они появятся здесь</p>
+          <button class="btn btn-outline" onclick="App.navigate('browse')">Перейти к фильмам</button>
+        </div>
+        <div id="watchlist-loading" class="state hidden">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <!-- ── FRIENDS ── -->
+      <div id="page-friends" class="page">
+        <h2 class="page-title">Друзья</h2>
+        <div class="invite-card">
+          <p class="invite-label">Ваша ссылка для приглашения:</p>
+          <div class="invite-row">
+            <code id="invite-link" class="invite-link"></code>
+            <button id="copy-btn" class="btn-copy">Копировать</button>
+          </div>
+        </div>
+        <!-- Рекомендации от друзей -->
+        <div id="rec-section" class="rec-section hidden">
+          <h3 class="rec-section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            Рекомендуют тебе
+          </h3>
+          <div id="rec-grid" class="rec-grid"></div>
+        </div>
+
+        <div id="friends-list" class="friends-list"></div>
+        <div id="friends-loading" class="state hidden"><div class="spinner"></div></div>
+        <div id="friends-empty" class="state hidden">
+          <div class="state-icon">👥</div>
+          <h3>Пока нет друзей</h3>
+          <p>Поделитесь ссылкой выше — и друг появится в списке</p>
+        </div>
+
+        <!-- Friend detail panel -->
+        <div id="common-panel" class="common-panel hidden">
+          <div class="common-header">
+            <button id="common-back" class="btn-back">← Назад</button>
+            <h3 id="common-friend-name"></h3>
+          </div>
+          <div class="panel-tabs">
+            <button class="tab-btn active" data-tab="common">Общие</button>
+            <button class="tab-btn" data-tab="friend">Список друга</button>
+          </div>
+          <div id="common-grid" class="movie-grid"></div>
+          <div id="common-loading" class="state hidden"><div class="spinner"></div></div>
+          <div id="common-empty" class="state hidden">
+            <div class="state-icon">🍿</div>
+            <h3 id="common-empty-text">Нет общих фильмов</h3>
+            <p id="common-empty-sub">Оценивайте больше фильмов — появятся совпадения!</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-page="browse">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="2" width="20" height="20" rx="3"/><path d="M8 2v20M16 2v20M2 8h20M2 16h20"/>
+        </svg>
+        <span data-i18n="nav_browse">Смотреть</span>
+      </button>
+      <button class="nav-btn" data-page="watchlist">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        <span data-i18n="nav_watchlist">Список</span>
+      </button>
+      <button class="nav-btn" data-page="friends">
+        <div class="nav-icon-wrap">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span id="rec-badge" class="nav-badge hidden">0</span>
+        </div>
+        <span data-i18n="nav_friends">Друзья</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ══════════════ MOVIE DETAIL MODAL ══════════════ -->
+  <div id="movie-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-overlay" id="modal-overlay"></div>
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <button class="modal-close" id="modal-close" aria-label="Закрыть">✕</button>
+      <img id="modal-poster" class="modal-poster" src="" alt="" referrerpolicy="no-referrer">
+      <div class="modal-body">
+        <div class="modal-tags">
+          <span id="modal-year" class="tag tag-year"></span>
+          <span id="modal-age" class="tag tag-age"></span>
+          <span id="modal-duration" class="tag"></span>
+        </div>
+        <h2 id="modal-title" class="modal-title"></h2>
+        <p id="modal-tagline" class="modal-tagline"></p>
+        <p id="modal-desc" class="modal-desc"></p>
+        <div id="modal-watch" class="modal-watch-section hidden">
+          <h4 class="modal-section-label">Где посмотреть</h4>
+          <div id="modal-watch-links" class="watch-links"></div>
+        </div>
+        <!-- Rating buttons — visible when opened from a recommendation -->
+        <div id="modal-rate-row" class="modal-rate-row hidden">
+          <button id="modal-rate-dislike" class="btn btn-ghost">✗ Не интересно</button>
+          <button id="modal-rate-watched" class="btn btn-ghost">👁 Смотрел</button>
+          <button id="modal-rate-like" class="btn btn-primary">❤️ Хочу</button>
+        </div>
+        <div class="modal-action-row">
+          <button id="modal-remove-btn" class="btn btn-danger">Убрать из списка</button>
+          <button id="modal-share-btn" class="btn btn-secondary btn-icon-text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            Рекомендовать
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ FRIEND REQUEST BANNER ══════════════ -->
+  <div id="friend-banner" class="friend-banner hidden">
+    <div class="friend-banner-inner">
+      <p id="friend-banner-text">Добавить в друзья?</p>
+      <div class="friend-banner-btns">
+        <button id="friend-add-btn" class="btn btn-primary btn-sm">Добавить</button>
+        <button id="friend-skip-btn" class="btn btn-ghost btn-sm">Пропустить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ UNDO ══════════════ -->
+  <button id="undo-btn" class="undo-btn hidden">↩ Отменить</button>
+
+  <!-- ══════════════ TOAST ══════════════ -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <!-- ══════════════ STATS MODAL ══════════════ -->
+  <div id="stats-modal" class="modal hidden" role="dialog">
+    <div class="modal-overlay" id="stats-overlay"></div>
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <button class="modal-close" id="stats-close">✕</button>
+      <div class="modal-body" style="padding-top:8px">
+        <h2 class="modal-title">Ваша статистика</h2>
+        <div id="stats-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ ONBOARDING ══════════════ -->
+  <div id="onboarding" class="onboarding hidden">
+    <div class="onboarding-inner">
+      <div class="onboarding-emoji">🎬</div>
+      <h2 class="onboarding-title">Какие фильмы любишь?</h2>
+      <p class="onboarding-sub">Выбери жанры — покажем подходящее сразу</p>
+      <div id="onboarding-genres" class="onboarding-genres"></div>
+      <button id="onboarding-done" class="btn btn-primary" style="margin-top:20px;width:100%">Начать →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════ SETTINGS PANEL ══════════════ -->
+  <div id="settings-panel" class="settings-panel hidden" role="dialog" aria-modal="true">
+    <div class="settings-overlay" id="settings-overlay"></div>
+    <div class="settings-sheet">
+      <div class="settings-drag-handle"></div>
+      <button class="settings-close" id="settings-close">✕</button>
+
+      <!-- Profile block -->
+      <div class="settings-profile-block">
+        <div class="settings-avatar" id="settings-avatar">?</div>
+        <div class="settings-user-info">
+          <div class="settings-display-name" id="settings-display-name">—</div>
+          <div class="settings-email" id="settings-email-label">—</div>
+        </div>
+        <button id="settings-edit-name-btn" class="settings-edit-btn" title="Изменить имя">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Name edit inline form -->
+      <div id="settings-name-form" class="settings-name-form hidden">
+        <input id="settings-name-input" class="input" data-i18n-ph="settings_name_ph" placeholder="Ваше имя" maxlength="32">
+        <div class="settings-name-btns">
+          <button id="settings-name-save" class="btn btn-primary btn-sm" data-i18n="save">Сохранить</button>
+          <button id="settings-name-cancel" class="btn btn-ghost btn-sm" data-i18n="cancel">Отмена</button>
+        </div>
+      </div>
+
+      <!-- Themes -->
+      <div class="settings-section">
+        <div class="settings-section-title" data-i18n="settings_appearance">Оформление</div>
+        <div id="theme-grid" class="theme-grid"></div>
+      </div>
+
+      <!-- Language -->
+      <div class="settings-section">
+        <div class="settings-section-title" data-i18n="settings_language">Язык / Language</div>
+        <div class="lang-row">
+          <button class="lang-btn" data-lang="ru">🇷🇺 Русский</button>
+          <button class="lang-btn" data-lang="en">🇬🇧 English</button>
+        </div>
+      </div>
+
+      <!-- Interface toggles -->
+      <div class="settings-section">
+        <div class="settings-section-title">Интерфейс</div>
+        <div class="settings-toggle-item">
+          <div class="settings-toggle-info">
+            <div class="settings-toggle-label">Подсказки жестов</div>
+            <div class="settings-toggle-desc">← скип · 👁 смотрел · ❤️ хочу →</div>
+          </div>
+          <button id="hints-toggle" class="toggle-btn" aria-label="Подсказки жестов"></button>
+        </div>
+      </div>
+
+      <!-- Future section placeholder -->
+      <div class="settings-section settings-section-future">
+        <div class="settings-section-title" data-i18n="settings_more">Скоро</div>
+        <div class="settings-future-item">
+          <span class="settings-future-icon">🔔</span>
+          <span class="settings-future-label" data-i18n="settings_notifs">Уведомления</span>
+          <span class="settings-future-badge" data-i18n="settings_soon">Скоро</span>
+        </div>
+        <div class="settings-future-item">
+          <span class="settings-future-icon">🎯</span>
+          <span class="settings-future-label" data-i18n="settings_genres_default">Жанры по умолчанию</span>
+          <span class="settings-future-badge" data-i18n="settings_soon">Скоро</span>
+        </div>
+        <div class="settings-future-item">
+          <span class="settings-future-icon">👥</span>
+          <span class="settings-future-label" data-i18n="settings_privacy">Приватность</span>
+          <span class="settings-future-badge" data-i18n="settings_soon">Скоро</span>
+        </div>
+      </div>
+
+      <!-- Browser login for TG users -->
+      <div class="settings-section settings-tg-browser hidden" id="settings-tg-browser">
+        <div class="settings-section-title">Вход с браузера / ПК</div>
+        <div class="settings-about-row">
+          <span class="settings-about-label">Email</span>
+          <span class="settings-about-version" id="tg-browser-email">—</span>
+        </div>
+        <div class="settings-tg-pass-form">
+          <input id="tg-browser-pass" class="input" type="password" placeholder="Задать пароль" maxlength="64">
+          <button id="tg-browser-save" class="btn btn-primary btn-sm">Сохранить</button>
+        </div>
+        <div class="settings-about-row" style="margin-top:6px">
+          <span class="settings-about-label" style="font-size:11px;opacity:.5">Используй этот email + пароль чтобы войти в браузере</span>
+        </div>
+      </div>
+
+      <!-- Merge accounts (TG → existing browser account) -->
+      <div class="settings-section settings-tg-merge hidden" id="settings-tg-merge">
+        <div class="settings-section-title">Объединить аккаунты</div>
+        <p class="settings-merge-hint">Есть аккаунт из браузера? Введи данные — лайки, друзья и история объединятся.</p>
+        <div class="settings-tg-pass-form" style="flex-direction:column;gap:8px">
+          <input id="tg-merge-email" class="input" type="email" placeholder="Email аккаунта" maxlength="128">
+          <div style="display:flex;gap:8px">
+            <input id="tg-merge-pass" class="input" type="password" placeholder="Пароль" maxlength="64">
+            <button id="tg-merge-btn" class="btn btn-primary btn-sm">Объединить</button>
+          </div>
+        </div>
+        <div id="tg-merge-status" style="display:none;margin-top:10px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.5"></div>
+        <div class="settings-merge-warning">
+          ⚠️ После объединения пароль браузерного аккаунта изменится. Задай новый в разделе «Вход с браузера / ПК» выше.
+        </div>
+      </div>
+
+      <!-- About -->
+      <div class="settings-section settings-about">
+        <div class="settings-section-title">О приложении</div>
+        <div class="settings-about-row">
+          <span class="settings-about-label">Идея</span>
+          <a class="settings-about-link" href="https://github.com/vnyzaica" target="_blank" rel="noopener">@vnyzaica</a>
+        </div>
+        <div class="settings-about-row">
+          <span class="settings-about-label">Автор</span>
+          <a class="settings-about-link" href="https://github.com/Mr-AKULA" target="_blank" rel="noopener">@Mr-AKULA</a>
+        </div>
+        <div class="settings-about-row">
+          <span class="settings-about-label">Версия</span>
+          <span class="settings-about-version">1.0 beta</span>
+        </div>
+      </div>
+
+      <!-- Sign out -->
+      <div class="settings-section settings-section-danger">
+        <button id="settings-logout-btn" class="settings-signout-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          <span data-i18n="sign_out">Выйти из аккаунта</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════ SHARE SHEET ══════════════ -->
+  <div id="share-sheet" class="bottom-sheet hidden" role="dialog" aria-modal="true">
+    <div class="bottom-sheet-overlay" id="share-overlay"></div>
+    <div class="bottom-sheet-inner">
+      <div class="bottom-sheet-handle"></div>
+      <p class="bottom-sheet-title">Поделиться</p>
+      <p id="share-movie-name" class="share-movie-name"></p>
+      <div class="share-options">
+        <button id="share-friend-btn" class="share-opt">
+          <span class="share-opt-icon">👥</span>
+          <div>
+            <div class="share-opt-label">Другу в FFF</div>
+            <div class="share-opt-sub">Отправить рекомендацию</div>
+          </div>
+        </button>
+        <button id="share-copy-btn" class="share-opt">
+          <span class="share-opt-icon">🔗</span>
+          <div>
+            <div class="share-opt-label">Скопировать ссылку</div>
+            <div class="share-opt-sub">Поделиться вне приложения</div>
+          </div>
+        </button>
+        <button id="share-native-btn" class="share-opt hidden">
+          <span class="share-opt-icon">↗️</span>
+          <div>
+            <div class="share-opt-label">Поделиться…</div>
+            <div class="share-opt-sub">Через мессенджер или соцсеть</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ FRIEND PICKER ══════════════ -->
+  <div id="friend-picker" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-overlay" id="picker-overlay"></div>
+    <div class="modal-sheet">
+      <div class="modal-drag-handle"></div>
+      <button class="modal-close" id="picker-close">✕</button>
+      <div class="modal-body" style="padding-top:8px">
+        <h3 class="modal-title">Кому отправить?</h3>
+        <div id="picker-list"></div>
+        <div id="picker-empty" class="state hidden">
+          <div class="state-icon">👥</div>
+          <p>Нет друзей — сначала добавь их</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PLAYER MODAL ══════════════ -->
+  <div id="player-modal" class="player-modal hidden">
+    <div class="player-topbar">
+      <span id="player-title" class="player-title"></span>
+      <button id="player-close" class="player-close">✕</button>
+    </div>
+    <iframe id="player-iframe" class="player-iframe" src="" allowfullscreen
+      allow="autoplay; fullscreen; picture-in-picture"></iframe>
+  </div>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="app.js?v=20"></script>
+</body>
+</html>

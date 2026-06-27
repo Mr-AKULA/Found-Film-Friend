@@ -1,0 +1,25 @@
+{
+  "name": "Found Film Friend",
+  "short_name": "FFF",
+  "description": "Свайпай фильмы вместе с друзьями",
+  "start_url": "/Found-Film-Friend/",
+  "scope": "/Found-Film-Friend/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0f",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
