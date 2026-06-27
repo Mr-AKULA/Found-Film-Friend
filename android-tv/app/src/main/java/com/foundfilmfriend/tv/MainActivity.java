@@ -44,6 +44,15 @@ public class MainActivity extends Activity {
             browseActive = "browse".equals(screen);
             movieLoaded  = hasMovie;
         }
+
+        @JavascriptInterface
+        public void openUrl(String url) {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            } catch (Exception e) {
+                Log.e(TAG, "Cannot open URL: " + url);
+            }
+        }
     }
 
     @Override

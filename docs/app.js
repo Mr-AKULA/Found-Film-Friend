@@ -1553,7 +1553,7 @@ function closeModal() {
 function openPlayer(url, title = '') {
   if (!url) return;
   if (IS_TG) { TG.openLink(url); return; }
-  if (IS_TV) { window.location.href = url; return; } // shouldOverrideUrlLoading opens in system browser
+  if (IS_TV) { window.TVBridge?.openUrl(url); return; } // JavascriptInterface opens in system browser
   $('#player-iframe').src = url;
   $('#player-title').textContent = title;
   show($('#player-modal'));
