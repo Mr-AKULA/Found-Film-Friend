@@ -98,24 +98,27 @@ async function signInWithTelegram(tgUser) {
   const email    = `tg_${tgUser.id}@fff.app`;
   const password = btoa(`fff_tg_${tgUser.id}_v1`).replace(/=/g, '');
 
+  /* Existing user */
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-
-  if (!error && data.user) {
-    /* Existing user — refresh TG username in profile */
-    await sb.from('profiles').update({
+  if (!error && data.session) {
+    /* onAuthStateChange → onSignedIn. Profile update in background. */
+    sb.from('profiles').update({
       telegram_id:       String(tgUser.id),
       telegram_username: tgUser.username || null,
-    }).eq('id', data.user.id);
-    await onSignedIn(data.user);
+    }).eq('id', data.user.id).then(() => {});
     return;
   }
 
-  /* First time — create account */
+  /* New user — first time */
   const displayName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ')
                       || tgUser.username || 'Пользователь';
 
   const { data: up, error: upErr } = await sb.auth.signUp({ email, password });
-  if (upErr) { console.error('[TG] signup:', upErr.message); showScreen('auth'); return; }
+  if (upErr) {
+    console.error('[TG] signup:', upErr.message);
+    showToast('Ошибка входа: ' + upErr.message, 4000);
+    return;
+  }
 
   if (up.user) {
     await sb.from('profiles').upsert({
@@ -124,10 +127,11 @@ async function signInWithTelegram(tgUser) {
       telegram_id:       String(tgUser.id),
       telegram_username: tgUser.username || null,
     }, { onConflict: 'id' });
-
-    /* signUp fires SIGNED_IN via onAuthStateChange → onSignedIn is called there */
-    if (up.session) await onSignedIn(up.user);
-    else showToast('Аккаунт создан, входим...', 2000);
+    /* Session exists (email conf. OFF) → onAuthStateChange fires SIGNED_IN → onSignedIn */
+    /* Session null (email conf. ON) → показываем подсказку */
+    if (!up.session) {
+      showToast('Отключи "Confirm email" в Supabase Auth → Settings', 6000);
+    }
   }
 }
 
@@ -187,16 +191,22 @@ async function initAuth() {
     return;
   }
 
-  /* Telegram Mini App — auto-login, skip email form */
+  /* Telegram Mini App — отдельный поток авторизации, return в конце */
   if (IS_TG && TG.initDataUnsafe?.user) {
+    TG.ready(); // сообщаем Telegram что приложение загружено
+    /* Подписываемся ДО логина чтобы не пропустить SIGNED_IN событие */
+    sb.auth.onAuthStateChange(async (_event, session) => {
+      if (session) await onSignedIn(session.user);
+    });
     await signInWithTelegram(TG.initDataUnsafe.user);
-    /* onAuthStateChange below handles SIGNED_IN for new users */
+    return; // не падаем в обычный email-флоу
   }
 
+  /* Обычный веб-флоу */
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await onSignedIn(session.user);
-  } else if (!IS_TG) {
+  } else {
     showScreen('auth');
   }
 
