@@ -26,7 +26,7 @@
 |-----------|--------|------------|
 | 🌐 Web App (PWA) | ✅ Запущен | Vanilla JS, Supabase, GitHub Pages |
 | ✈️ Telegram Mini App | ✅ Запущен | Telegram WebApp API, авто-логин |
-| 📺 Android TV | ✅ Запущен | Java, WebView, D-pad управление |
+| 📺 Android TV | ✅ Запущен | Java, WebView, D-pad + паiring-код |
 
 ---
 
@@ -62,9 +62,11 @@
 - Онбординг — при первом входе выбор любимых жанров
 - Возрастной фильтр — фильмы подбираются под возраст пользователя
 
-**Просмотр**
-- Кнопка **▶ Смотреть бесплатно** в карточке фильма — встроенный плеер (kinokino.vip)
-- Ссылки на стриминговые сервисы (Кинопоиск, Иви и др.)
+**Поиск и просмотр**
+- Вкладка **🔍 Поиск** — глобальный поиск по 38 000+ фильмам
+- Кнопка **▶ Смотреть бесплатно** — открывает плеер (kinopoisk.vip)
+- В браузере/TG — встроенный iframe-плеер
+- На Android TV — страница плеера открывается в WebView, фуллскрин по кнопке пульта
 
 **Список желаний**
 - Все лайкнутые фильмы с постерами
@@ -92,9 +94,12 @@
 - Офлайн-оболочка (service worker)
 
 **📺 Android TV**
-- D-pad управление: ← скип, → лайк, ↑ смотрел
+- D-pad управление на всех экранах: карточки, модалки, кнопки
+- Фокус-ловушка в модалке — D-pad управляет кнопками внутри, не фоном
 - Вход через 6-значный код с телефона — без клавиатуры
 - Автоматический вход после первой авторизации
+- Просмотр фильмов прямо в WebView — Back возвращает в приложение
+- Фуллскрин видео через нативный `onShowCustomView`
 - Нативный сплэш-экран пока грузится страница
 
 ---
@@ -116,6 +121,14 @@
 3. При запуске появится 6-значный код
 4. На телефоне: Настройки → **Войти на TV** → введите код
 5. TV войдёт в аккаунт автоматически
+
+**D-pad на TV:**
+| Экран | Клавиши |
+|-------|---------|
+| Лента фильмов | → лайк, ← скип, ↑ смотрел |
+| Список / Друзья | ↑↓←→ перемещение, OK открыть |
+| Модалка фильма | ↑↓ между кнопками, OK нажать, Назад закрыть |
+| Плеер | D-pad управляет плеером нативно, Назад → в приложение |
 
 ### Объединение аккаунтов
 
@@ -159,7 +172,8 @@
 
 ```
 1. cd android-tv
-2. ./gradlew assembleDebug
+2. .\gradlew.bat assembleDebug          (Windows)
+   ./gradlew assembleDebug              (Linux/Mac)
 3. adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -211,6 +225,7 @@ Found_Film_Friend/
 │   ├── index.html              ← SPA
 │   ├── style.css               ← Dark cinema theme
 │   ├── app.js                  ← Логика + Supabase + Telegram WebApp API
+│   ├── player.html             ← Страница плеера (Kinobox embed)
 │   ├── manifest.json           ← PWA манифест
 │   ├── sw.js                   ← Service Worker
 │   ├── icon-192.png / icon-512.png ← PWA иконки
@@ -218,7 +233,7 @@ Found_Film_Friend/
 │
 ├── 📁 android-tv/              ← Android TV приложение
 │   ├── app/src/main/
-│   │   ├── java/.../MainActivity.java  ← WebView + D-pad + TVBridge
+│   │   ├── java/.../MainActivity.java  ← WebView + D-pad + TVBridge + fullscreen
 │   │   └── AndroidManifest.xml
 │   ├── build.gradle
 │   └── gradle.properties
@@ -240,9 +255,12 @@ Found_Film_Friend/
 
 **Android TV:**
 - Java + Android WebView — нативная обёртка
-- `JavascriptInterface` — двусторонний мост JS ↔ Java
-- D-pad перехватывается только на нужных экранах (TVBridge)
-- Вход через паiring-код без клавиатуры
+- `JavascriptInterface` (`TVBridge`) — мост JS ↔ Java
+- Java перехватывает все D-pad клавиши и диспатчит в JS как synthetic keydown
+- JS обрабатывает навигацию: browse-экшены / фокус-ловушка в модалке / spatial nav по карточкам
+- `onShowCustomView` — нативный фуллскрин для видео
+- `inExternalPage` флаг — D-pad передаётся плееру когда открыта страница стриминга
+- Вход через pairing-код без клавиатуры
 
 **Telegram Bot:**
 - `pyTelegramBotAPI` — запуск Mini App через кнопку меню
@@ -265,9 +283,11 @@ Found_Film_Friend/
 - [x] PWA — установка на телефон
 - [x] Рекомендации между друзьями
 - [x] Haptic feedback в Mini App
-- [x] Встроенный плеер (kinokino.vip)
+- [x] Встроенный плеер (kinopoisk.vip / Kinobox)
+- [x] Глобальный поиск фильмов
 - [x] Android TV приложение с D-pad управлением
 - [x] TV вход через pairing-код с телефона
+- [x] TV просмотр фильмов в WebView с фуллскрином
 - [ ] Push-уведомления о новых совпадениях
 - [ ] Групповые сессии просмотра
 
