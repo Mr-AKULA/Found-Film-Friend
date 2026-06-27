@@ -1424,7 +1424,7 @@ async function openMovieModal(movie, posterUrl, showRemove, recId = null) {
   /* kinokino.vip — free streaming, opens in inline player */
   const kpPath = (movie.kp_type === 'tv-series' || movie.kp_type === 'animated-series')
     ? 'series' : 'film';
-  const kkUrl  = `https://www.kinopoisk.vip/${kpPath}/${movie.id}/`;
+  const kkUrl  = `https://fbdomen.top/${kpPath}/${movie.id}/`;
   const kkBtn  = document.createElement('button');
   kkBtn.className = 'watch-link-btn watch-link-free';
   kkBtn.innerHTML = '<span class="watch-link-icon">▶</span> Смотреть бесплатно';
