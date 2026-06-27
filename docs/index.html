@@ -7,7 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
   <meta name="theme-color" content="#7c3aed">
@@ -441,6 +441,22 @@
         </div>
       </div>
 
+      <!-- Browser login for TG users -->
+      <div class="settings-section settings-tg-browser hidden" id="settings-tg-browser">
+        <div class="settings-section-title">Вход с браузера / ПК</div>
+        <div class="settings-about-row">
+          <span class="settings-about-label">Email</span>
+          <span class="settings-about-version" id="tg-browser-email">—</span>
+        </div>
+        <div class="settings-tg-pass-form">
+          <input id="tg-browser-pass" class="input" type="password" placeholder="Задать пароль" maxlength="64">
+          <button id="tg-browser-save" class="btn btn-primary btn-sm">Сохранить</button>
+        </div>
+        <div class="settings-about-row" style="margin-top:6px">
+          <span class="settings-about-label" style="font-size:11px;opacity:.5">Используй этот email + пароль чтобы войти в браузере</span>
+        </div>
+      </div>
+
       <!-- About -->
       <div class="settings-section settings-about">
         <div class="settings-section-title">О приложении</div>
@@ -523,6 +539,6 @@
   </div>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>

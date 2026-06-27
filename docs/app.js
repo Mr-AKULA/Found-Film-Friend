@@ -22,14 +22,6 @@ if (IS_TG) {
   TG.setBackgroundColor?.('#0a0a0f');
 }
 
-/* DEBUG — удалить после диагностики */
-(function() {
-  const d = document.createElement('div');
-  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;z-index:99999;padding:6px 10px;font-size:11px;font-family:monospace;word-break:break-all;';
-  const u = TG?.initDataUnsafe?.user;
-  d.textContent = `v11 | TG:${!!window.Telegram?.WebApp} | IS_TG:${IS_TG} | user:${u ? u.id+'/'+u.first_name : 'null'}`;
-  document.addEventListener('DOMContentLoaded', () => document.body.appendChild(d));
-})();
 
 /* ─── Supabase client ─── */
 /* persistSession:false keeps session in JS memory only — avoids 401 errors
@@ -110,10 +102,12 @@ async function signInWithTelegram(tgUser) {
 
   /* Existing user */
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  showToast(error ? `signIn err: ${error.message}` : `signIn ok: ${data.session ? 'session' : 'no session'}`, 5000);
   if (!error && data.session) {
-    /* onAuthStateChange → onSignedIn. Profile update in background. */
+    const displayName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ')
+                        || tgUser.username || null;
+    /* Обновляем имя и TG-поля при каждом входе */
     sb.from('profiles').update({
+      ...(displayName ? { display_name: displayName } : {}),
       telegram_id:       String(tgUser.id),
       telegram_username: tgUser.username || null,
     }).eq('id', data.user.id).then(() => {});
@@ -205,20 +199,11 @@ async function initAuth() {
   /* Telegram Mini App — отдельный поток авторизации, return в конце */
   if (IS_TG && TG.initDataUnsafe?.user) {
     TG.ready();
-    const tgU = TG.initDataUnsafe.user;
-    showToast(`TG: ${tgU.first_name} id=${tgU.id}`, 4000);
     sb.auth.onAuthStateChange(async (_event, session) => {
-      showToast(`AUTH: ${_event}`, 3000);
       if (session) await onSignedIn(session.user);
     });
-    await signInWithTelegram(tgU);
+    await signInWithTelegram(TG.initDataUnsafe.user);
     return;
-  }
-  /* DEBUG — видно если IS_TG false */
-  if (window.Telegram?.WebApp) {
-    showToast(`TG SDK есть, но user=${JSON.stringify(window.Telegram.WebApp.initDataUnsafe?.user)}`, 6000);
-  } else {
-    showToast('TG SDK не загружен', 4000);
   }
 
   /* Обычный веб-флоу */
@@ -607,6 +592,17 @@ function openSettings() {
   /* Sync hints toggle */
   const hintsOn = document.documentElement.classList.contains('show-hints');
   $('#hints-toggle')?.classList.toggle('on', hintsOn);
+
+  /* Секция "Вход с браузера" — только для TG-пользователей */
+  const tgSection = $('#settings-tg-browser');
+  if (tgSection) {
+    if (IS_TG && user?.email?.startsWith('tg_')) {
+      show(tgSection);
+      $('#tg-browser-email').textContent = user.email;
+    } else {
+      hide(tgSection);
+    }
+  }
 
   show($('#settings-panel'));
   document.body.classList.add('modal-open');
@@ -1639,6 +1635,16 @@ document.addEventListener('DOMContentLoaded', () => {
       applyLang();
       renderThemeGrid(); // refresh theme names in selected language
     });
+  });
+
+  /* TG users — set browser password */
+  $('#tg-browser-save')?.addEventListener('click', async () => {
+    const pass = $('#tg-browser-pass')?.value?.trim();
+    if (!pass || pass.length < 6) { showToast('Минимум 6 символов', 2500); return; }
+    const { error } = await sb.auth.updateUser({ password: pass });
+    if (error) { showToast('Ошибка: ' + error.message, 3500); return; }
+    showToast('Пароль сохранён! Теперь можешь войти с браузера', 3500);
+    $('#tg-browser-pass').value = '';
   });
 
   /* Hints toggle in settings */

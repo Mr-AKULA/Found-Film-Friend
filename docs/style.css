@@ -1616,6 +1616,29 @@ body.card-dragging .actions-group {
 .settings-about-link:hover { color: #c4b5fd; text-decoration: underline; }
 .settings-about-version { color: rgba(255,255,255,0.35); font-size: 12px; }
 
+/* TG browser login section */
+.settings-tg-pass-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.settings-tg-pass-form .input {
+  flex: 1;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 14px;
+}
+.settings-tg-pass-form .input::placeholder { color: rgba(255,255,255,0.3); }
+.settings-tg-pass-form .btn-sm {
+  padding: 10px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+  border-radius: 10px;
+}
+
 /* Danger section */
 .settings-section-danger { padding-top: 20px; }
 .settings-signout-btn {
