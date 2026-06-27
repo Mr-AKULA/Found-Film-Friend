@@ -7,7 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="style.css?v=21">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
   <meta name="theme-color" content="#7c3aed">
@@ -42,6 +42,7 @@
         <button id="login-btn" class="btn btn-primary">Войти</button>
         <p class="auth-switch">Нет аккаунта? <a href="#" id="show-register">Зарегистрироваться →</a></p>
         <p class="auth-switch"><a href="#" id="show-forgot">Забыли пароль?</a></p>
+        <p id="tv-code-link" class="auth-switch hidden"><a href="#" id="show-tv-code">📺 Войти через код →</a></p>
       </div>
 
       <!-- Register -->
@@ -87,6 +88,16 @@
           <input id="newpass-confirm" type="password" class="input" placeholder="Повторите пароль" autocomplete="new-password">
         </div>
         <button id="newpass-btn" class="btn btn-primary">Сохранить пароль</button>
+      </div>
+
+      <!-- TV Code Login Screen -->
+      <div id="tv-code-section" class="auth-form hidden">
+        <div class="tv-code-icon">📺</div>
+        <h2 class="form-title">Войти через телефон</h2>
+        <p class="tv-code-hint">Открой Telegram или браузер.<br>Настройки → <b>Войти на TV</b>, введи код:</p>
+        <div id="tv-code-display" class="tv-code-display">——————</div>
+        <div id="tv-code-status" class="tv-code-status">Генерую код...</div>
+        <button id="tv-code-back" class="btn btn-ghost" style="margin-top:24px;width:100%">← Назад</button>
       </div>
 
       <div id="auth-msg" class="auth-msg hidden"></div>
@@ -474,6 +485,17 @@
         </div>
       </div>
 
+      <!-- TV Login (from phone — activate TV) -->
+      <div class="settings-section" id="settings-tv-section">
+        <div class="settings-section-title">📺 Войти на TV</div>
+        <p class="settings-merge-hint">Введи 6-значный код с экрана телевизора:</p>
+        <div class="settings-tg-pass-form">
+          <input id="tv-code-input" class="input" type="text" placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]*">
+          <button id="tv-code-activate-btn" class="btn btn-primary btn-sm">Войти</button>
+        </div>
+        <div id="tv-code-activate-status" class="tv-activate-status hidden"></div>
+      </div>
+
       <!-- About -->
       <div class="settings-section settings-about">
         <div class="settings-section-title">О приложении</div>
@@ -566,6 +588,6 @@
   </div>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="app.js?v=20"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>

@@ -681,6 +681,10 @@ function openSettings() {
     }
   }
 
+  /* TV Code activation — show on phone/browser only (can't type code with TV remote) */
+  const tvSection = $('#settings-tv-section');
+  if (tvSection) IS_TV ? hide(tvSection) : show(tvSection);
+
   /* В TG Mini App выйти невозможно — аккаунт привязан к Telegram */
   const logoutSection = $('.settings-section-danger');
   if (logoutSection) IS_TG ? hide(logoutSection) : show(logoutSection);
@@ -896,9 +900,13 @@ function showAuthMsg(text, type) {
 }
 
 function showAuthForm(name) {
-  ['login-form', 'register-form', 'forgot-form', 'newpass-form']
+  ['login-form', 'register-form', 'forgot-form', 'newpass-form', 'tv-code-section']
     .forEach(id => hide($(`#${id}`)));
-  show($(`#${name}-form`));
+  if (name === 'tv-code') {
+    show($('#tv-code-section'));
+  } else {
+    show($(`#${name}-form`));
+  }
   hide($('#auth-msg'));
 }
 
@@ -1503,6 +1511,100 @@ function closePlayer() {
 }
 
 /* ══════════════════════════════════════════════
+   TV CODE LOGIN
+══════════════════════════════════════════════ */
+let _tvCodeInterval = null;
+let _tvCodeExpiry   = null;
+
+async function showTVCodeLogin() {
+  showAuthForm('tv-code');
+
+  const code      = String(Math.floor(100000 + Math.random() * 900000));
+  const displayEl = $('#tv-code-display');
+  const statusEl  = $('#tv-code-status');
+
+  if (displayEl) displayEl.textContent = code;
+  if (statusEl)  statusEl.textContent  = 'Генерую код...';
+
+  if (_tvCodeInterval) { clearInterval(_tvCodeInterval); _tvCodeInterval = null; }
+  if (_tvCodeExpiry)   { clearTimeout(_tvCodeExpiry);   _tvCodeExpiry   = null; }
+
+  const { error: insErr } = await sb.from('tv_sessions').insert({ code, activated: false });
+  if (insErr) {
+    if (statusEl) statusEl.textContent = 'Ошибка: ' + insErr.message;
+    return;
+  }
+  if (statusEl) statusEl.textContent = 'Ожидаю активацию...';
+
+  _tvCodeInterval = setInterval(async () => {
+    try {
+      const { data } = await sb.rpc('claim_tv_session', { p_code: code });
+      if (data && data.length > 0 && data[0].access_token) {
+        clearInterval(_tvCodeInterval); _tvCodeInterval = null;
+        clearTimeout(_tvCodeExpiry);    _tvCodeExpiry   = null;
+        if (statusEl) statusEl.textContent = 'Вхожу...';
+        const { data: sd, error: se } = await sb.auth.setSession({
+          access_token:  data[0].access_token,
+          refresh_token: data[0].refresh_token,
+        });
+        if (se) { if (statusEl) statusEl.textContent = 'Ошибка сессии: ' + se.message; return; }
+        if (sd?.user) await onSignedIn(sd.user);
+      }
+    } catch (_) { /* ignore transient network errors */ }
+  }, 3000);
+
+  _tvCodeExpiry = setTimeout(async () => {
+    if (_tvCodeInterval) { clearInterval(_tvCodeInterval); _tvCodeInterval = null; }
+    await sb.from('tv_sessions').delete().eq('code', code);
+    if (statusEl) statusEl.textContent = 'Код истёк. Нажми «Назад» и попробуй снова.';
+  }, 600000);
+}
+
+function cancelTVCode() {
+  if (_tvCodeInterval) { clearInterval(_tvCodeInterval); _tvCodeInterval = null; }
+  if (_tvCodeExpiry)   { clearTimeout(_tvCodeExpiry);   _tvCodeExpiry   = null; }
+  showAuthForm('login');
+}
+
+async function activateTVCode() {
+  const input     = $('#tv-code-input');
+  const code      = input?.value?.trim() || '';
+  const statusEl  = $('#tv-code-activate-status');
+
+  if (!/^\d{6}$/.test(code)) { showToast('Введи 6 цифр', 2500); return; }
+
+  if (statusEl) { show(statusEl); statusEl.textContent = 'Проверяю код...'; }
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    if (statusEl) statusEl.textContent = 'Нет активной сессии — войди в аккаунт';
+    return;
+  }
+
+  const { data, error } = await sb.rpc('activate_tv_session', {
+    p_code:          code,
+    p_access_token:  session.access_token,
+    p_refresh_token: session.refresh_token,
+  });
+
+  if (error) {
+    if (statusEl) statusEl.textContent = 'Ошибка: ' + error.message;
+    showToast('Ошибка: ' + error.message, 3500);
+    return;
+  }
+  if (!data) {
+    if (statusEl) statusEl.textContent = 'Код не найден или уже использован';
+    showToast('Код не найден', 3000);
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = 'Готово! TV подключён 📺';
+  showToast('TV подключён 📺', 3000);
+  if (input) input.value = '';
+  setTimeout(() => { if (statusEl) hide(statusEl); }, 5000);
+}
+
+/* ══════════════════════════════════════════════
    SWIPE GESTURE
 ══════════════════════════════════════════════ */
 (function initSwipe() {
@@ -1810,6 +1912,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* Player */
   $('#player-close')?.addEventListener('click', closePlayer);
+
+  /* TV Code login (shown on Android TV only) */
+  if (IS_TV) show($('#tv-code-link'));
+  $('#show-tv-code')?.addEventListener('click', e => { e.preventDefault(); showTVCodeLogin(); });
+  $('#tv-code-back')?.addEventListener('click', cancelTVCode);
+  $('#tv-code-activate-btn')?.addEventListener('click', activateTVCode);
+  $('#tv-code-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') activateTVCode(); });
 
   /* Friend picker */
   $('#picker-close')?.addEventListener('click',   () => hide($('#friend-picker')));

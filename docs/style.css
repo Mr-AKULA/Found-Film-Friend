@@ -1740,3 +1740,48 @@ body.card-dragging .actions-group {
 
 /* Prevent body scroll when modal is open */
 body.modal-open { overflow: hidden; }
+
+/* ─── TV Code Screen ─── */
+.tv-code-icon {
+  font-size: 48px;
+  text-align: center;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+.tv-code-hint {
+  font-size: 15px;
+  color: rgba(255,255,255,0.65);
+  text-align: center;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+.tv-code-display {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: 10px;
+  text-align: center;
+  color: var(--accent-l);
+  background: rgba(124,58,237,0.12);
+  border: 2px solid rgba(124,58,237,0.3);
+  border-radius: var(--radius);
+  padding: 18px 20px 18px 30px;
+  margin: 0 0 16px;
+  font-variant-numeric: tabular-nums;
+}
+.tv-code-status {
+  text-align: center;
+  font-size: 14px;
+  color: var(--subtext);
+  min-height: 20px;
+}
+.tv-activate-status {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: rgba(167,139,250,0.1);
+  border: 1px solid rgba(167,139,250,0.2);
+  color: #a78bfa;
+  text-align: center;
+  line-height: 1.4;
+}
