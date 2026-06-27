@@ -7,9 +7,9 @@
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
 [![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-Live-222?style=for-the-badge&logo=github&logoColor=white)](https://mr-akula.github.io/Found-Film-Friend/)
 [![PWA](https://img.shields.io/badge/PWA-Ready-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)](https://mr-akula.github.io/Found-Film-Friend/)
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![Telegram](https://img.shields.io/badge/Telegram_Mini_App-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/MrAKULA_bot)
 
-[🌐 Открыть веб-версию](https://mr-akula.github.io/Found-Film-Friend/) • [🤖 Открыть в Telegram](https://t.me/MrAKULA_bot)
+[🌐 Открыть веб-версию](https://mr-akula.github.io/Found-Film-Friend/) • [✈️ Открыть в Telegram](https://t.me/MrAKULA_bot)
 
 </div>
 
@@ -24,7 +24,7 @@
 | Платформа | Статус | Технологии |
 |-----------|--------|------------|
 | 🌐 Web App (PWA) | ✅ Запущен | Vanilla JS, Supabase, GitHub Pages |
-| 🤖 Telegram Bot | ✅ Запущен | Python, pyTeleBot, SQLite |
+| ✈️ Telegram Mini App | ✅ Запущен | Telegram WebApp API, авто-логин |
 | 📱 Android | 🚧 В разработке | Java, Retrofit, Supabase |
 
 ---
@@ -74,13 +74,15 @@
 - Оценка рекомендаций — ❤️ хочу / 👁 смотрел / ✕ не интересно
 
 **Аккаунт**
-- Регистрация / вход / сброс пароля через email
+- В Telegram — авторизация автоматически через аккаунт Telegram
+- В браузере — регистрация / вход / сброс пароля через email
 - Статистика: оценено / хочу / смотрел / друзья + топ-5 жанров
 
-**PWA**
+**PWA / Telegram Mini App**
 - Устанавливается на телефон как обычное приложение
-- Офлайн-оболочка (service worker кэширует статику)
-- Иконка с мотивом кинохлопушки + сердца
+- Открывается прямо внутри Telegram — без App Store
+- Haptic feedback при свайпах (вибрация на iOS/Android)
+- Офлайн-оболочка (service worker)
 
 ---
 
@@ -97,17 +99,20 @@
 4. Settings → Pages → Source: /docs
 5. Auth → URL Configuration:
    Site URL: https://ВАШ-НИК.github.io/Found-Film-Friend/
-6. Загрузите фильмы через export_to_supabase.py
+6. Auth → Settings → отключите "Confirm email" (для Telegram авто-логина)
+7. Загрузите фильмы через export_to_supabase.py
 ```
 
-### 🤖 Telegram Bot
+### ✈️ Telegram Mini App
 
-```bash
-git clone https://github.com/Mr-AKULA/Found-Film-Friend.git
-cd Found-Film-Friend
-pip install -r requirements.txt
-# Настройте Settings.py: token, BOT_USERNAME, ADMIN_IDS
-python main.py
+```
+1. Запустите бота: python main.py
+2. В @BotFather:
+   /mybots → ваш бот → Bot Settings → Menu Button
+   → URL: https://ВАШ-НИК.github.io/Found-Film-Friend/
+   → Текст: 🎬 Found Film Friend
+3. Пользователь открывает бота → нажимает кнопку меню → Mini App
+4. Авторизация происходит автоматически через Telegram
 ```
 
 ---
@@ -117,7 +122,7 @@ python main.py
 ### База данных (Supabase PostgreSQL)
 
 ```
-profiles         ←── auth.users (auto-created via trigger)
+profiles         ←── auth.users (telegram_id, telegram_username)
 movies
   ├── posters         (preview_url → Kinopoisk CDN)
   ├── genres
@@ -153,18 +158,18 @@ PostgreSQL-функция с `WITH`-запросами. Выбирает оди�
 
 ```
 Found_Film_Friend/
-├── 📁 docs/                    ← GitHub Pages (web app)
+├── 📁 docs/                    ← Web App / Telegram Mini App
 │   ├── index.html              ← SPA
 │   ├── style.css               ← Dark cinema theme
-│   ├── app.js                  ← Логика + Supabase SDK
+│   ├── app.js                  ← Логика + Supabase + Telegram WebApp API
 │   ├── manifest.json           ← PWA манифест
 │   ├── sw.js                   ← Service Worker
 │   ├── icon-192.png            ← PWA иконка
 │   ├── icon-512.png            ← PWA иконка (maskable)
 │   └── supabase.sql            ← Схема БД + RPC функции
 │
-├── 📄 main.py                  ← Telegram Bot
-├── 📄 sql_queries.py           ← SQL запросы бота
+├── 📄 main.py                  ← Telegram Bot (запускает Mini App)
+├── 📄 sql_queries.py           ← SQL запросы
 ├── 📄 export_to_supabase.py    ← Миграция SQLite → Supabase
 └── 📄 movies.db                ← SQLite (локальная копия)
 ```
@@ -173,27 +178,24 @@ Found_Film_Friend/
 
 ## Технологии
 
-**Web App:**
-- Vanilla JS (без фреймворков) — GitHub Pages, 0 зависимостей в рантайме
+**Web App / Mini App:**
+- Vanilla JS (без фреймворков) — 0 зависимостей в рантайме
 - `Supabase JS SDK v2` — auth + database + RPC
-- `persistSession: false` — обход Tracking Prevention в Edge/Firefox
+- `Telegram WebApp JS API` — авто-логин, haptic feedback, полный экран
 - CSS Custom Properties + CSS Animations + PWA Service Worker
 
 **Telegram Bot:**
-- `pyTelegramBotAPI` — Telegram API
-- `SQLite` — локальная база данных
+- `pyTelegramBotAPI` — запуск Mini App через кнопку меню
 - Реферальные ссылки с параметрами
 
 ---
 
 ## Планы
 
-- [x] Telegram Bot с реферальной системой
 - [x] Web App (GitHub Pages + Supabase)
+- [x] Telegram Mini App с авто-логином
 - [x] Система друзей с инвайт-ссылками
 - [x] Умный алгоритм (приоритет + лайки + персонализация)
-- [x] Сброс пароля через email
-- [x] Список друга
 - [x] Свайп вверх = «уже смотрел»
 - [x] Свайп вниз = поделиться фильмом
 - [x] Фильтр по жанрам
@@ -203,6 +205,7 @@ Found_Film_Friend/
 - [x] Онбординг для новых пользователей
 - [x] PWA — установка на телефон
 - [x] Рекомендации между друзьями
+- [x] Haptic feedback в Mini App
 - [ ] Android приложение
 - [ ] Уведомления о новых совпадениях
 - [ ] Групповые сессии просмотра
