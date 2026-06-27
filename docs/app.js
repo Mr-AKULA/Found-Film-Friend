@@ -145,25 +145,30 @@ async function signInWithTelegram(tgUser) {
   }
 }
 
+function mergeStatus(msg, isError = false) {
+  const el = $('#tg-merge-status');
+  if (!el) return;
+  el.style.display = 'block';
+  el.style.background = isError ? 'rgba(244,63,94,0.15)' : 'rgba(167,139,250,0.12)';
+  el.style.border = isError ? '1px solid rgba(244,63,94,0.3)' : '1px solid rgba(167,139,250,0.25)';
+  el.style.color = isError ? '#f87171' : '#c4b5fd';
+  el.textContent = msg;
+}
+
 async function mergeAccounts(browserEmail, browserPassword) {
   const tgUser     = TG.initDataUnsafe.user;
   const tgPassword = btoa(`fff_tg_${tgUser.id}_v1`).replace(/=/g, '');
   const tgUserId   = state.user.id;
 
-  /* Close settings so toasts are visible */
-  closeSettings();
-
-  /* Block onAuthStateChange during merge — intermediate sessions must not trigger UI */
   state.merging = true;
 
-  /* Step 1: verify browser account credentials */
-  showToast('Проверяю данные...', 2000);
+  mergeStatus('Шаг 1/3: проверяю данные...');
   const { data, error } = await sb.auth.signInWithPassword({
     email: browserEmail, password: browserPassword,
   });
   if (error) {
     state.merging = false;
-    showToast('Неверный email или пароль: ' + error.message, 4000);
+    mergeStatus('Ошибка: ' + error.message, true);
     await sb.auth.signInWithPassword({ email: `tg_${tgUser.id}@fff.app`, password: tgPassword });
     return false;
   }
@@ -171,12 +176,11 @@ async function mergeAccounts(browserEmail, browserPassword) {
   const browserUserId = data.user.id;
   if (browserUserId === tgUserId) {
     state.merging = false;
-    showToast('Это уже один и тот же аккаунт', 3000);
+    mergeStatus('Это уже один и тот же аккаунт', true);
     return false;
   }
 
-  /* Step 2: merge data via RPC */
-  showToast('Объединяю данные...', 3000);
+  mergeStatus('Шаг 2/3: объединяю данные...');
   const { error: mergeErr } = await sb.rpc('merge_accounts', {
     from_user_id:        tgUserId,
     to_user_id:          browserUserId,
@@ -187,14 +191,13 @@ async function mergeAccounts(browserEmail, browserPassword) {
 
   if (mergeErr) {
     state.merging = false;
-    showToast('Ошибка: ' + mergeErr.message, 6000);
+    mergeStatus('Ошибка RPC: ' + mergeErr.message, true);
     await sb.auth.signInWithPassword({ email: `tg_${tgUser.id}@fff.app`, password: tgPassword });
     return false;
   }
 
-  /* Step 3: re-login as merged account */
+  mergeStatus('Шаг 3/3: вхожу в объединённый аккаунт...');
   state.merging = false;
-  showToast('Готово! Аккаунты объединены', 4000);
   await signInWithTelegram(tgUser);
   return true;
 }
