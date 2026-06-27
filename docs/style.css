@@ -758,6 +758,13 @@ html.show-hints .swipe-hint { display: block; }
   transition: all 0.2s;
 }
 .watch-link-btn:hover { border-color: var(--accent); color: var(--accent-l); text-decoration: none; }
+.watch-link-btn.watch-link-free {
+  background: rgba(124,58,237,0.15);
+  border-color: rgba(124,58,237,0.4);
+  color: #c4b5fd;
+  font-weight: 600;
+}
+.watch-link-btn.watch-link-free:hover { background: rgba(124,58,237,0.25); border-color: var(--accent); }
 .watch-link-icon { font-size: 20px; }
 
 /* ══════════════════════════════════════════════

@@ -716,7 +716,7 @@ function closeShareSheet() {
 async function openSharedMovie(movieId) {
   /* Load and show movie in modal when opened via ?movie=ID */
   const [{ data: movie }, { data: posters }] = await Promise.all([
-    sb.from('movies').select('id,name,slogan,description,year,age_rating,duration_minutes').eq('id', movieId).single(),
+    sb.from('movies').select('id,name,slogan,description,year,age_rating,duration_minutes,kp_type').eq('id', movieId).single(),
     sb.from('posters').select('preview_url').eq('movie_id', movieId).limit(1),
   ]);
   if (!movie) return;
@@ -1194,7 +1194,7 @@ const App = {
     }
 
     const [{ data: movies }, { data: posters }] = await Promise.all([
-      sb.from('movies').select('id, name, year, description, slogan, age_rating').in('id', commonIds),
+      sb.from('movies').select('id, name, year, description, slogan, age_rating, kp_type').in('id', commonIds),
       sb.from('posters').select('movie_id, preview_url').in('movie_id', commonIds),
     ]);
 
@@ -1238,7 +1238,7 @@ const App = {
 
     const ids = actions.map(a => a.movie_id);
     const [{ data: movies }, { data: posters }] = await Promise.all([
-      sb.from('movies').select('id, name, year, description, slogan, age_rating').in('id', ids),
+      sb.from('movies').select('id, name, year, description, slogan, age_rating, kp_type').in('id', ids),
       sb.from('posters').select('movie_id, preview_url').in('movie_id', ids),
     ]);
 
@@ -1419,6 +1419,17 @@ async function openMovieModal(movie, posterUrl, showRemove, recId = null) {
   const watchLinks   = $('#modal-watch-links');
   watchLinks.innerHTML = '';
 
+  /* kinokino.vip — free streaming, always shown */
+  const kpPath = (movie.kp_type === 'tv-series' || movie.kp_type === 'animated-series')
+    ? 'series' : 'film';
+  const kkLink = document.createElement('a');
+  kkLink.className = 'watch-link-btn watch-link-free';
+  kkLink.href      = `https://www.kinokino.vip/${kpPath}/${movie.id}/`;
+  kkLink.target    = '_blank';
+  kkLink.rel       = 'noopener';
+  kkLink.innerHTML = '<span class="watch-link-icon">▶</span> Смотреть бесплатно';
+  watchLinks.appendChild(kkLink);
+
   const { data: links } = await sb
     .from('watchability')
     .select('service_name, link')
@@ -1434,10 +1445,8 @@ async function openMovieModal(movie, posterUrl, showRemove, recId = null) {
       a.innerHTML = `<span class="watch-link-icon">▶</span> ${escHtml(service_name)}`;
       watchLinks.appendChild(a);
     });
-    show(watchSection);
-  } else {
-    hide(watchSection);
   }
+  show(watchSection);
 
   /* Share button handler */
   const shareBtn = $('#modal-share-btn');

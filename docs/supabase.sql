@@ -167,7 +167,8 @@ RETURNS TABLE (
   year         INTEGER,
   age_rating   INTEGER,
   priority     INTEGER,
-  preview_url  TEXT
+  preview_url  TEXT,
+  kp_type      TEXT
 )
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -191,7 +192,7 @@ BEGIN
   ),
   candidates AS (
     SELECT
-      m.id, m.name, m.slogan, m.description, m.year, m.age_rating, m.priority,
+      m.id, m.name, m.slogan, m.description, m.year, m.age_rating, m.priority, m.kp_type,
       (SELECT p.preview_url FROM public.posters p
        WHERE p.movie_id = m.id LIMIT 1)                   AS preview_url,
       (SELECT COUNT(*) FROM public.actions a2
@@ -221,7 +222,7 @@ BEGIN
   )
   SELECT
     c.id, c.name, c.slogan, c.description,
-    c.year, c.age_rating, c.priority, c.preview_url
+    c.year, c.age_rating, c.priority, c.preview_url, c.kp_type
   FROM candidates c
   ORDER BY RANDOM() * POWER(10,
     COALESCE(c.priority, 1)::FLOAT
