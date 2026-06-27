@@ -5,6 +5,8 @@ import android.animation.AnimatorListenerAdapter;
 import android.app.Activity;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -12,6 +14,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -22,10 +25,14 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
 
     private static final String APP_URL = "https://mr-akula.github.io/Found-Film-Friend/";
-    private WebView webView;
+    private static final String TAG     = "FFF_TV";
+
+    private WebView  webView;
+    private TextView splash;
+    private boolean  splashDismissed = false;
+    private final Handler  handler  = new Handler(Looper.getMainLooper());
     private final TVBridge tvBridge = new TVBridge();
 
-    /** JS → Java bridge: страница сообщает нам какой экран активен */
     class TVBridge {
         volatile boolean browseActive = false;
         volatile boolean movieLoaded  = false;
@@ -51,7 +58,7 @@ public class MainActivity extends Activity {
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         );
 
-        /* Root layout: WebView + native splash overlay */
+        /* ── Root: WebView + splash overlay ── */
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(0xFF0a0a0f);
 
@@ -61,11 +68,10 @@ public class MainActivity extends Activity {
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT));
 
-        /* Splash shown while page loads */
-        TextView splash = new TextView(this);
-        splash.setText("🎬  Found Film Friend");
-        splash.setTextColor(0xFFf0f0f8);
-        splash.setTextSize(24);
+        splash = new TextView(this);
+        splash.setText("Found Film Friend");
+        splash.setTextColor(0xFFa78bfa);
+        splash.setTextSize(28);
         splash.setTypeface(null, Typeface.BOLD);
         splash.setGravity(Gravity.CENTER);
         splash.setBackgroundColor(0xFF0a0a0f);
@@ -75,6 +81,7 @@ public class MainActivity extends Activity {
 
         setContentView(root);
 
+        /* ── WebView settings ── */
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -85,30 +92,32 @@ public class MainActivity extends Activity {
         s.setUserAgentString(s.getUserAgentString() + " FFF-AndroidTV/1.0");
 
         webView.addJavascriptInterface(tvBridge, "TVBridge");
+        webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
-                splash.animate()
-                    .alpha(0f)
-                    .setDuration(500)
-                    .setListener(new AnimatorListenerAdapter() {
-                        @Override public void onAnimationEnd(Animator a) {
-                            splash.setVisibility(View.GONE);
-                        }
-                    });
+                Log.d(TAG, "onPageFinished: " + url);
+                dismissSplash();
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest req, android.webkit.WebResourceError err) {
+                if (req.isForMainFrame()) {
+                    Log.e(TAG, "Page error — retrying in 4s");
+                    dismissSplash();
+                    handler.postDelayed(() -> webView.reload(), 4000);
+                }
             }
         });
-        webView.setWebChromeClient(new WebChromeClient());
+
+        /* Fallback: hide splash after 15s no matter what */
+        handler.postDelayed(this::dismissSplash, 15000);
 
         webView.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
 
-            Log.d("FFF_TV", "Key received: " + keyCode + " browseActive=" + tvBridge.browseActive + " movieLoaded=" + tvBridge.movieLoaded);
-
-            // На экране входа / других — не перехватываем, WebView сам управляет фокусом
             if (!tvBridge.browseActive) return false;
 
-            // На экране просмотра фильма — D-pad = оценить фильм
             if (tvBridge.movieLoaded) {
                 String jsKey = null;
                 switch (keyCode) {
@@ -118,33 +127,29 @@ public class MainActivity extends Activity {
                 }
                 if (jsKey != null) {
                     final String key = jsKey;
-                    Log.d("FFF_TV", "Dispatching JS key: " + key);
-                    Toast.makeText(this, key, Toast.LENGTH_SHORT).show();
-                    webView.post(() ->
-                        webView.evaluateJavascript(
-                            "document.dispatchEvent(new KeyboardEvent('keydown',{key:'" + key + "',bubbles:true}));",
-                            null
-                        )
-                    );
+                    webView.post(() -> webView.evaluateJavascript(
+                        "document.dispatchEvent(new KeyboardEvent('keydown',{key:'" + key + "',bubbles:true}));", null));
                     return true;
                 }
             }
 
-            // OK/Enter на кнопках — кликаем активный элемент
             if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-                webView.post(() ->
-                    webView.evaluateJavascript(
-                        "(function(){var el=document.activeElement;" +
-                        "if(el&&el.tagName==='BUTTON')el.click();})()",
-                        null
-                    )
-                );
+                webView.post(() -> webView.evaluateJavascript(
+                    "(function(){var el=document.activeElement;if(el&&el.tagName==='BUTTON')el.click();})()", null));
             }
 
-            return false; // остальное WebView обрабатывает сам
+            return false;
         });
 
         webView.loadUrl(APP_URL);
+    }
+
+    private void dismissSplash() {
+        if (splashDismissed || splash == null) return;
+        splashDismissed = true;
+        splash.animate().alpha(0f).setDuration(400).setListener(new AnimatorListenerAdapter() {
+            @Override public void onAnimationEnd(Animator a) { splash.setVisibility(View.GONE); }
+        });
     }
 
     @Override
@@ -158,5 +163,9 @@ public class MainActivity extends Activity {
 
     @Override protected void onPause()   { super.onPause();   webView.onPause(); }
     @Override protected void onResume()  { super.onResume();  webView.onResume(); }
-    @Override protected void onDestroy() { webView.destroy(); super.onDestroy(); }
+    @Override protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+        webView.destroy();
+        super.onDestroy();
+    }
 }
