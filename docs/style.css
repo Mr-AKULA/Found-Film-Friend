@@ -1749,6 +1749,10 @@ body.modal-open { overflow: hidden; }
   outline-offset: 3px;
   border-radius: var(--radius-sm);
 }
+#movie-modal button:focus {
+  outline: 3px solid var(--accent-l);
+  outline-offset: 3px;
+}
 
 /* ─── TV Code Screen ─── */
 .tv-code-icon {

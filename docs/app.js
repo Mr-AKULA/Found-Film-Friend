@@ -1540,11 +1540,19 @@ async function openMovieModal(movie, posterUrl, showRemove, recId = null) {
 
   show($('#movie-modal'));
   document.body.classList.add('modal-open');
+  if (IS_TV) {
+    _tvModalPrevFocus = document.activeElement;
+    const firstBtn = $('#movie-modal').querySelector('button');
+    if (firstBtn) setTimeout(() => firstBtn.focus(), 50);
+  }
 }
+
+let _tvModalPrevFocus = null;
 
 function closeModal() {
   hide($('#movie-modal'));
   document.body.classList.remove('modal-open');
+  if (IS_TV && _tvModalPrevFocus) { _tvModalPrevFocus.focus(); _tvModalPrevFocus = null; }
 }
 
 /* ══════════════════════════════════════════════
@@ -2022,14 +2030,30 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) return;
+    e.preventDefault();
+
+    /* Focus trap: if movie modal is open, navigate only within its buttons */
+    const movieModal = $('#movie-modal');
+    if (movieModal && !movieModal.classList.contains('hidden')) {
+      const btns = [...movieModal.querySelectorAll('button')].filter(b => b.offsetParent !== null);
+      if (!btns.length) return;
+      const cur = document.activeElement;
+      const idx = btns.indexOf(cur);
+      let next;
+      if (idx === -1) { next = btns[0]; }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { next = btns[Math.min(idx + 1, btns.length - 1)]; }
+      else { next = btns[Math.max(idx - 1, 0)]; }
+      if (next) next.focus();
+      return;
+    }
+
     /* Arrow keys = move focus between cards (only outside browse) */
     if (onBrowse) return;
-    if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) return;
 
     const items = [...document.querySelectorAll('.movie-mini, .friend-item, .rec-item')]
       .filter(el => el.offsetParent !== null);
     if (items.length === 0) return;
-    e.preventDefault();
 
     const cur = document.activeElement;
     const idx = items.indexOf(cur);
