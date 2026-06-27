@@ -836,6 +836,7 @@ async function loadRecommendations() {
 function createRecItem(movie, posterUrl, senderName, seen) {
   const el = document.createElement('div');
   el.className = 'rec-item' + (seen ? ' rec-seen' : '');
+  el.tabIndex = 0;
   const safeUrl = posterUrl ? safeImgUrl(posterUrl) : '';
   el.innerHTML = `
     ${safeUrl
@@ -1353,6 +1354,7 @@ function renderMovieCard(movie) {
 function createMovieMini(movie, posterUrl) {
   const el = document.createElement('div');
   el.className = 'movie-mini';
+  el.tabIndex = 0;
 
   const safeUrl = posterUrl ? safeImgUrl(posterUrl) : '';
   if (safeUrl) {
@@ -1380,6 +1382,7 @@ function createFriendItem(profile) {
   const initial = name[0]?.toUpperCase() || '?';
   const el = document.createElement('div');
   el.className = 'friend-item';
+  el.tabIndex = 0;
   el.innerHTML = `
     <div class="friend-avatar">${initial}</div>
     <div class="friend-info">

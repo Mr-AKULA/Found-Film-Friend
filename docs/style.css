@@ -1741,6 +1741,15 @@ body.card-dragging .actions-group {
 /* Prevent body scroll when modal is open */
 body.modal-open { overflow: hidden; }
 
+/* ─── TV D-pad focus ring ─── */
+.movie-mini:focus,
+.friend-item:focus,
+.rec-item:focus {
+  outline: 3px solid var(--accent-l);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
 /* ─── TV Code Screen ─── */
 .tv-code-icon {
   font-size: 48px;
