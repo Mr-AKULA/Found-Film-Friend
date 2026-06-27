@@ -1104,7 +1104,7 @@ const App = {
     /* Step 2: movie details */
     const { data: movies, error: mErr } = await sb
       .from('movies')
-      .select('id, name, year, age_rating, description, slogan')
+      .select('id, name, year, age_rating, description, slogan, kp_type')
       .in('id', ids);
 
     if (mErr) console.error('[FFF] watchlist movies error:', mErr.message);
@@ -1551,8 +1551,9 @@ function closeModal() {
    INLINE PLAYER
 ══════════════════════════════════════════════ */
 function openPlayer(url, title = '') {
+  if (!url) return;
   if (IS_TG) { TG.openLink(url); return; }
-  if (IS_TV) { window.open(url, '_blank'); return; } // TV: открыть в браузере TV
+  if (IS_TV) { window.location.href = url; return; } // shouldOverrideUrlLoading opens in system browser
   $('#player-iframe').src = url;
   $('#player-title').textContent = title;
   show($('#player-modal'));
@@ -1561,7 +1562,7 @@ function openPlayer(url, title = '') {
 function closePlayer() {
   hide($('#player-modal'));
   $('#player-iframe').src = '';
-  TG?.exitFullscreen?.();
+  try { TG?.exitFullscreen?.(); } catch (_) {}
 }
 
 /* ══════════════════════════════════════════════
