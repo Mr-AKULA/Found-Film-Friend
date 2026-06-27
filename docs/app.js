@@ -604,6 +604,10 @@ function openSettings() {
     }
   }
 
+  /* В TG Mini App выйти невозможно — аккаунт привязан к Telegram */
+  const logoutSection = $('.settings-section-danger');
+  if (logoutSection) IS_TG ? hide(logoutSection) : show(logoutSection);
+
   show($('#settings-panel'));
   document.body.classList.add('modal-open');
 }
