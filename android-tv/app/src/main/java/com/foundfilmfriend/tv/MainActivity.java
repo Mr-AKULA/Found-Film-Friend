@@ -13,8 +13,6 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
-import android.content.Intent;
-import android.net.Uri;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -22,7 +20,6 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 public class MainActivity extends Activity {
 
@@ -32,26 +29,23 @@ public class MainActivity extends Activity {
     private WebView  webView;
     private TextView splash;
     private boolean  splashDismissed = false;
+    private volatile boolean inExternalPage = false;
     private final Handler  handler  = new Handler(Looper.getMainLooper());
     private final TVBridge tvBridge = new TVBridge();
 
     class TVBridge {
-        volatile boolean browseActive = false;
-        volatile boolean movieLoaded  = false;
-
         @JavascriptInterface
         public void onScreenChanged(String screen, boolean hasMovie) {
-            browseActive = "browse".equals(screen);
-            movieLoaded  = hasMovie;
+            /* kept for compatibility — no longer used for key routing */
         }
 
         @JavascriptInterface
         public void openUrl(String url) {
-            try {
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-            } catch (Exception e) {
-                Log.e(TAG, "Cannot open URL: " + url);
-            }
+            /* Load streaming page inside our WebView — no external browser needed */
+            runOnUiThread(() -> {
+                inExternalPage = true;
+                webView.loadUrl(url);
+            });
         }
     }
 
@@ -105,30 +99,26 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(tvBridge, "TVBridge");
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
+
             @Override
             public void onPageFinished(WebView view, String url) {
                 Log.d(TAG, "onPageFinished: " + url);
+                /* Back on our app — restore D-pad interception */
+                if (url != null && url.startsWith("https://mr-akula.github.io")) {
+                    inExternalPage = false;
+                }
                 dismissSplash();
             }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                String url = request.getUrl().toString();
-                /* Внешние ссылки (кинокино и т.п.) — открывать в браузере TV */
-                if (!url.startsWith("https://mr-akula.github.io")) {
-                    try {
-                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-                    } catch (Exception e) {
-                        Log.e(TAG, "Cannot open URL: " + url);
-                    }
-                    return true;
-                }
+                /* Let WebView handle all URLs — streaming pages load inside WebView */
                 return false;
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, android.webkit.WebResourceError err) {
-                if (req.isForMainFrame()) {
+                if (req.isForMainFrame() && !inExternalPage) {
                     Log.e(TAG, "Page error — retrying in 4s");
                     dismissSplash();
                     handler.postDelayed(() -> webView.reload(), 4000);
@@ -141,6 +131,9 @@ public class MainActivity extends Activity {
 
         webView.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+
+            /* On streaming page — pass D-pad through so player can use it */
+            if (inExternalPage) return false;
 
             String jsKey = null;
             switch (keyCode) {
