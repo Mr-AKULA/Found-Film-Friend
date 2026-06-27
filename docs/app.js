@@ -2020,10 +2020,10 @@ document.addEventListener('DOMContentLoaded', () => {
     /* TV spatial navigation — active on all non-browse screens */
     if (!IS_TV) return;
 
-    /* Enter / OK button = click focused element (divs don't click on Enter by default) */
+    /* Enter / OK: click focused element (synthetic event from Java — must click manually) */
     if (e.key === 'Enter') {
       const el = document.activeElement;
-      if (el && el !== document.body && !['INPUT','TEXTAREA','BUTTON','A'].includes(el.tagName)) {
+      if (el && el !== document.body && !['INPUT','TEXTAREA'].includes(el.tagName)) {
         e.preventDefault();
         el.click();
         return;
@@ -2031,12 +2031,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) return;
-    e.preventDefault();
 
     /* Focus trap: if movie modal is open, navigate only within its buttons */
     const movieModal = $('#movie-modal');
     if (movieModal && !movieModal.classList.contains('hidden')) {
-      const btns = [...movieModal.querySelectorAll('button')].filter(b => b.offsetParent !== null);
+      e.preventDefault();
+      const btns = [...movieModal.querySelectorAll('button, a[href]')].filter(b => b.offsetParent !== null);
       if (!btns.length) return;
       const cur = document.activeElement;
       const idx = btns.indexOf(cur);
@@ -2048,12 +2048,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    /* Arrow keys = move focus between cards (only outside browse) */
+    /* Browse screen: let native TV focus traversal handle nav buttons */
     if (onBrowse) return;
 
+    /* Other screens: move focus between movie/friend/rec cards */
     const items = [...document.querySelectorAll('.movie-mini, .friend-item, .rec-item')]
       .filter(el => el.offsetParent !== null);
     if (items.length === 0) return;
+    e.preventDefault();
 
     const cur = document.activeElement;
     const idx = items.indexOf(cur);

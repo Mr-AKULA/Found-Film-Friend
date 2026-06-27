@@ -142,29 +142,21 @@ public class MainActivity extends Activity {
         webView.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
 
-            if (!tvBridge.browseActive) return false;
-
-            if (tvBridge.movieLoaded) {
-                String jsKey = null;
-                switch (keyCode) {
-                    case KeyEvent.KEYCODE_DPAD_RIGHT: jsKey = "ArrowRight"; break;
-                    case KeyEvent.KEYCODE_DPAD_LEFT:  jsKey = "ArrowLeft";  break;
-                    case KeyEvent.KEYCODE_DPAD_UP:    jsKey = "ArrowUp";    break;
-                }
-                if (jsKey != null) {
-                    final String key = jsKey;
-                    webView.post(() -> webView.evaluateJavascript(
-                        "document.dispatchEvent(new KeyboardEvent('keydown',{key:'" + key + "',bubbles:true}));", null));
-                    return true;
-                }
+            String jsKey = null;
+            switch (keyCode) {
+                case KeyEvent.KEYCODE_DPAD_RIGHT:  jsKey = "ArrowRight"; break;
+                case KeyEvent.KEYCODE_DPAD_LEFT:   jsKey = "ArrowLeft";  break;
+                case KeyEvent.KEYCODE_DPAD_UP:     jsKey = "ArrowUp";    break;
+                case KeyEvent.KEYCODE_DPAD_DOWN:   jsKey = "ArrowDown";  break;
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                case KeyEvent.KEYCODE_ENTER:       jsKey = "Enter";      break;
             }
+            if (jsKey == null) return false;
 
-            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-                webView.post(() -> webView.evaluateJavascript(
-                    "(function(){var el=document.activeElement;if(el&&el.tagName==='BUTTON')el.click();})()", null));
-            }
-
-            return false;
+            final String key = jsKey;
+            webView.post(() -> webView.evaluateJavascript(
+                "document.dispatchEvent(new KeyboardEvent('keydown',{key:'" + key + "',bubbles:true,cancelable:true}));", null));
+            return true;
         });
 
         webView.loadUrl(APP_URL);
