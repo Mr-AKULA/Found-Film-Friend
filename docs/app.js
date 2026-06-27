@@ -1133,6 +1133,7 @@ const App = {
       grid.appendChild(el);
     });
     if (rendered === 0) show(empty);
+    else if (IS_TV) { const f = grid.querySelector('.movie-mini'); if (f) f.focus(); }
   },
 
   /* ─── FRIENDS ─── */
@@ -1176,6 +1177,7 @@ const App = {
       const item = createFriendItem(p);
       list.appendChild(item);
     });
+    if (IS_TV) { const f = list.querySelector('.friend-item'); if (f) f.focus(); }
   },
 
   async loadCommonMovies(friendId, friendName) {
@@ -1937,18 +1939,54 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  /* Keyboard shortcuts */
+  /* Keyboard shortcuts + TV D-pad spatial navigation */
   document.addEventListener('keydown', e => {
-    if ($('#page-browse').classList.contains('active')) {
+    const onBrowse = $('#page-browse').classList.contains('active');
+
+    /* Browse screen: Arrow keys = rate movie */
+    if (onBrowse) {
       if (e.key === 'ArrowRight' || e.key === 'l') App.rateMovie(true);
       if (e.key === 'ArrowLeft'  || e.key === 'j') App.rateMovie(false);
       if (e.key === 'ArrowUp'    || e.key === 'k') App.markWatched();
       if (e.key === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undoLastAction(); }
     }
-    if (e.key === 'Escape') {
-      closeModal();
-      hide($('#stats-modal'));
+
+    if (e.key === 'Escape') { closeModal(); hide($('#stats-modal')); }
+
+    /* TV spatial navigation — active on all non-browse screens */
+    if (!IS_TV) return;
+
+    /* Enter / OK button = click focused element (divs don't click on Enter by default) */
+    if (e.key === 'Enter') {
+      const el = document.activeElement;
+      if (el && el !== document.body && !['INPUT','TEXTAREA','BUTTON','A'].includes(el.tagName)) {
+        e.preventDefault();
+        el.click();
+        return;
+      }
     }
+
+    /* Arrow keys = move focus between cards (only outside browse) */
+    if (onBrowse) return;
+    if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) return;
+
+    const items = [...document.querySelectorAll('.movie-mini, .friend-item, .rec-item')]
+      .filter(el => el.offsetParent !== null);
+    if (items.length === 0) return;
+    e.preventDefault();
+
+    const cur = document.activeElement;
+    const idx = items.indexOf(cur);
+
+    let next;
+    if (idx === -1) {
+      next = items[0];
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      next = items[Math.min(idx + 1, items.length - 1)];
+    } else {
+      next = items[Math.max(idx - 1, 0)];
+    }
+    if (next) { next.focus(); next.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
   });
 
   /* Apply language on start */
