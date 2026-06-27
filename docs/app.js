@@ -96,16 +96,22 @@ function showToast(msg, duration = 2500) {
 ══════════════════════════════════════════════ */
 
 async function signInWithTelegram(tgUser) {
-  const email    = `tg_${tgUser.id}@fff.app`;
-  const password = btoa(`fff_tg_${tgUser.id}_v1`).replace(/=/g, '');
-  showToast(`Вход: ${email}`, 4000);
+  const tgEmail    = `tg_${tgUser.id}@fff.app`;
+  const tgPassword = btoa(`fff_tg_${tgUser.id}_v1`).replace(/=/g, '');
 
-  /* Existing user */
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  /* Check if this telegram_id is linked to a browser account after merge */
+  const { data: linked } = await sb.from('profiles')
+    .select('auth_email')
+    .eq('telegram_id', String(tgUser.id))
+    .maybeSingle();
+
+  const loginEmail = linked?.auth_email || tgEmail;
+
+  /* Try sign in (works for both native TG accounts and linked browser accounts) */
+  const { data, error } = await sb.auth.signInWithPassword({ email: loginEmail, password: tgPassword });
   if (!error && data.session) {
     const displayName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ')
                         || tgUser.username || null;
-    /* Обновляем имя и TG-поля при каждом входе */
     sb.from('profiles').update({
       ...(displayName ? { display_name: displayName } : {}),
       telegram_id:       String(tgUser.id),
@@ -118,7 +124,7 @@ async function signInWithTelegram(tgUser) {
   const displayName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ')
                       || tgUser.username || 'Пользователь';
 
-  const { data: up, error: upErr } = await sb.auth.signUp({ email, password });
+  const { data: up, error: upErr } = await sb.auth.signUp({ email: tgEmail, password: tgPassword });
   if (upErr) {
     console.error('[TG] signup:', upErr.message);
     showToast('Ошибка входа: ' + upErr.message, 4000);
@@ -132,12 +138,53 @@ async function signInWithTelegram(tgUser) {
       telegram_id:       String(tgUser.id),
       telegram_username: tgUser.username || null,
     }, { onConflict: 'id' });
-    /* Session exists (email conf. OFF) → onAuthStateChange fires SIGNED_IN → onSignedIn */
-    /* Session null (email conf. ON) → показываем подсказку */
     if (!up.session) {
       showToast('Отключи "Confirm email" в Supabase Auth → Settings', 6000);
     }
   }
+}
+
+async function mergeAccounts(browserEmail, browserPassword) {
+  const tgUser     = TG.initDataUnsafe.user;
+  const tgPassword = btoa(`fff_tg_${tgUser.id}_v1`).replace(/=/g, '');
+  const tgUserId   = state.user.id;
+
+  /* Sign in as browser account to verify credentials + get ID */
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: browserEmail, password: browserPassword,
+  });
+  if (error) {
+    showToast('Неверный email или пароль', 3000);
+    /* Restore TG session */
+    await sb.auth.signInWithPassword({ email: `tg_${tgUser.id}@fff.app`, password: tgPassword });
+    return false;
+  }
+
+  const browserUserId = data.user.id;
+  if (browserUserId === tgUserId) {
+    showToast('Это уже один и тот же аккаунт', 3000);
+    return false;
+  }
+
+  /* Merge via Supabase function (SECURITY DEFINER — can touch auth.users) */
+  const { error: mergeErr } = await sb.rpc('merge_accounts', {
+    from_user_id:       tgUserId,
+    to_user_id:         browserUserId,
+    p_telegram_id:      String(tgUser.id),
+    p_telegram_username: tgUser.username || null,
+    p_tg_password:      tgPassword,
+  });
+
+  if (mergeErr) {
+    showToast('Ошибка объединения: ' + mergeErr.message, 5000);
+    await sb.auth.signInWithPassword({ email: `tg_${tgUser.id}@fff.app`, password: tgPassword });
+    return false;
+  }
+
+  showToast('Аккаунты объединены! ⚠️ Пароль изменился — задай новый в настройках', 6000);
+  /* Re-login via TG — now finds browser account by telegram_id */
+  await signInWithTelegram(tgUser);
+  return true;
 }
 
 async function initAuth() {
@@ -593,14 +640,24 @@ function openSettings() {
   const hintsOn = document.documentElement.classList.contains('show-hints');
   $('#hints-toggle')?.classList.toggle('on', hintsOn);
 
-  /* Секция "Вход с браузера" — только для TG-пользователей */
+  /* "Вход с браузера" — для всех TG пользователей (merged или нет) */
   const tgSection = $('#settings-tg-browser');
   if (tgSection) {
-    if (IS_TG && user?.email?.startsWith('tg_')) {
+    if (IS_TG) {
       show(tgSection);
-      $('#tg-browser-email').textContent = user.email;
+      $('#tg-browser-email').textContent = user?.email || '—';
     } else {
       hide(tgSection);
+    }
+  }
+
+  /* "Объединить аккаунты" — только для нативных tg_ аккаунтов (не смерженных) */
+  const mergeSection = $('#settings-tg-merge');
+  if (mergeSection) {
+    if (IS_TG && user?.email?.startsWith('tg_')) {
+      show(mergeSection);
+    } else {
+      hide(mergeSection);
     }
   }
 
@@ -1639,6 +1696,17 @@ document.addEventListener('DOMContentLoaded', () => {
       applyLang();
       renderThemeGrid(); // refresh theme names in selected language
     });
+  });
+
+  /* TG users — merge with browser account */
+  $('#tg-merge-btn')?.addEventListener('click', async () => {
+    const email = $('#tg-merge-email')?.value?.trim();
+    const pass  = $('#tg-merge-pass')?.value?.trim();
+    if (!email || !pass) { showToast('Введи email и пароль', 2500); return; }
+    const btn = $('#tg-merge-btn');
+    btn.disabled = true; btn.textContent = '...';
+    await mergeAccounts(email, pass);
+    btn.disabled = false; btn.textContent = 'Объединить';
   });
 
   /* TG users — set browser password */

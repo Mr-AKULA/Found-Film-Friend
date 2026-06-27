@@ -7,7 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="style.css?v=14">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
   <meta name="theme-color" content="#7c3aed">
@@ -457,6 +457,22 @@
         </div>
       </div>
 
+      <!-- Merge accounts (TG → existing browser account) -->
+      <div class="settings-section settings-tg-merge hidden" id="settings-tg-merge">
+        <div class="settings-section-title">Объединить аккаунты</div>
+        <p class="settings-merge-hint">Есть аккаунт из браузера? Введи данные — лайки, друзья и история объединятся.</p>
+        <div class="settings-tg-pass-form" style="flex-direction:column;gap:8px">
+          <input id="tg-merge-email" class="input" type="email" placeholder="Email аккаунта" maxlength="128">
+          <div style="display:flex;gap:8px">
+            <input id="tg-merge-pass" class="input" type="password" placeholder="Пароль" maxlength="64">
+            <button id="tg-merge-btn" class="btn btn-primary btn-sm">Объединить</button>
+          </div>
+        </div>
+        <div class="settings-merge-warning">
+          ⚠️ После объединения пароль браузерного аккаунта изменится. Задай новый в разделе «Вход с браузера / ПК» выше.
+        </div>
+      </div>
+
       <!-- About -->
       <div class="settings-section settings-about">
         <div class="settings-section-title">О приложении</div>
@@ -539,6 +555,6 @@
   </div>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>

@@ -1639,6 +1639,24 @@ body.card-dragging .actions-group {
   border-radius: 10px;
 }
 
+/* Merge accounts section */
+.settings-merge-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.5;
+}
+.settings-merge-warning {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(251,191,36,0.1);
+  border: 1px solid rgba(251,191,36,0.25);
+  border-radius: 10px;
+  font-size: 12px;
+  color: rgba(251,191,36,0.85);
+  line-height: 1.5;
+}
+
 /* Danger section */
 .settings-section-danger { padding-top: 20px; }
 .settings-signout-btn {
