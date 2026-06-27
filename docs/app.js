@@ -949,6 +949,11 @@ const App = {
     if (page === 'watchlist') App.loadWatchlist();
     if (page === 'friends')   App.loadFriends();
     if (page === 'browse' && !state.currentMovie) App.loadNextMovie();
+
+    /* Сообщаем Android TV какой экран активен */
+    if (IS_TV && window.TVBridge) {
+      TVBridge.onScreenChanged(page, !!state.currentMovie);
+    }
   },
 
   /* ─── BROWSE ─── */
@@ -1011,6 +1016,7 @@ const App = {
       state.currentMovie = movie;
       renderMovieCard(movie);
       show($('#browse-main'));
+      if (IS_TV && window.TVBridge) TVBridge.onScreenChanged('browse', true);
     } catch (e) {
       console.error('[FFF] loadNextMovie exception:', e);
       hide($('#browse-loading'));
