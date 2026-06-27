@@ -97,9 +97,11 @@ function showToast(msg, duration = 2500) {
 async function signInWithTelegram(tgUser) {
   const email    = `tg_${tgUser.id}@fff.app`;
   const password = btoa(`fff_tg_${tgUser.id}_v1`).replace(/=/g, '');
+  showToast(`Вход: ${email}`, 4000);
 
   /* Existing user */
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  showToast(error ? `signIn err: ${error.message}` : `signIn ok: ${data.session ? 'session' : 'no session'}`, 5000);
   if (!error && data.session) {
     /* onAuthStateChange → onSignedIn. Profile update in background. */
     sb.from('profiles').update({
@@ -193,13 +195,21 @@ async function initAuth() {
 
   /* Telegram Mini App — отдельный поток авторизации, return в конце */
   if (IS_TG && TG.initDataUnsafe?.user) {
-    TG.ready(); // сообщаем Telegram что приложение загружено
-    /* Подписываемся ДО логина чтобы не пропустить SIGNED_IN событие */
+    TG.ready();
+    const tgU = TG.initDataUnsafe.user;
+    showToast(`TG: ${tgU.first_name} id=${tgU.id}`, 4000);
     sb.auth.onAuthStateChange(async (_event, session) => {
+      showToast(`AUTH: ${_event}`, 3000);
       if (session) await onSignedIn(session.user);
     });
-    await signInWithTelegram(TG.initDataUnsafe.user);
-    return; // не падаем в обычный email-флоу
+    await signInWithTelegram(tgU);
+    return;
+  }
+  /* DEBUG — видно если IS_TG false */
+  if (window.Telegram?.WebApp) {
+    showToast(`TG SDK есть, но user=${JSON.stringify(window.Telegram.WebApp.initDataUnsafe?.user)}`, 6000);
+  } else {
+    showToast('TG SDK не загружен', 4000);
   }
 
   /* Обычный веб-флоу */
