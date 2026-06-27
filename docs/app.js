@@ -15,6 +15,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_0NHWJrnl1boP_Ma0hLH9Ew_m684L-5J';
 /* ─── Telegram Mini App ─── */
 const TG    = window.Telegram?.WebApp;
 const IS_TG = !!(TG?.initDataUnsafe?.user);
+const IS_TV = navigator.userAgent.includes('FFF-AndroidTV');
 if (IS_TG) {
   TG.expand();
   TG.disableVerticalSwipes?.();
@@ -28,7 +29,7 @@ if (IS_TG) {
    caused by Firefox/Edge Tracking Prevention silently blocking localStorage */
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    persistSession: false,
+    persistSession: IS_TV,  // TV: сохраняем сессию в localStorage (вход один раз навсегда)
     autoRefreshToken: true,
     detectSessionInUrl: true,
   },
