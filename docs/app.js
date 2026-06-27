@@ -279,6 +279,7 @@ async function initAuth() {
     await onSignedIn(session.user);
   } else {
     showScreen('auth');
+    if (IS_TV) showTVCodeLogin(); // TV: сразу показываем код, не форму email/пароль
   }
 
   sb.auth.onAuthStateChange(async (_event, session) => {
