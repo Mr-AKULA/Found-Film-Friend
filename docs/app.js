@@ -1465,7 +1465,8 @@ async function openMovieModal(movie, posterUrl, showRemove, recId = null) {
 
   toggle($('#modal-age'),     !!movie.age_rating);
   toggle($('#modal-tagline'), !!movie.slogan);
-  toggle($('#modal-remove-btn'), showRemove);
+  toggle($('#modal-remove-btn'),  showRemove);
+  toggle($('#modal-watched-btn'), showRemove);
 
   /* Rate row — shown only when opened from a recommendation */
   const rateRow = $('#modal-rate-row');
@@ -1536,6 +1537,18 @@ async function openMovieModal(movie, posterUrl, showRemove, recId = null) {
     closeModal();
     App.loadWatchlist();
     showToast('Убрано из списка');
+  };
+
+  /* Watched button handler */
+  const watchedBtn = $('#modal-watched-btn');
+  watchedBtn.onclick = async () => {
+    await sb.from('actions')
+      .update({ want_to_watch: false, watched: true })
+      .eq('user_id', state.user.id)
+      .eq('movie_id', movie.id);
+    closeModal();
+    App.loadWatchlist();
+    showToast('Отмечено как просмотренное');
   };
 
   show($('#movie-modal'));
