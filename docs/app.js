@@ -1495,15 +1495,25 @@ async function openMovieModal(movie, posterUrl, showRemove, recId = null) {
   const watchLinks   = $('#modal-watch-links');
   watchLinks.innerHTML = '';
 
-  /* kinopoisk.vip — opens in WebView on TV, iframe on web/TG */
-  const kpPath = (movie.kp_type === 'tv-series' || movie.kp_type === 'animated-series')
-    ? 'series' : 'film';
-  const kkUrl = `https://www.kinopoisk.vip/${kpPath}/${movie.id}/`;
-  const kkBtn  = document.createElement('button');
-  kkBtn.className = 'watch-link-btn watch-link-free';
-  kkBtn.innerHTML = '<span class="watch-link-icon">▶</span> Смотреть бесплатно';
-  kkBtn.addEventListener('click', () => openPlayer(kkUrl, movie.name));
-  watchLinks.appendChild(kkBtn);
+  /* Legal streaming search links */
+  const query = encodeURIComponent(movie.name);
+  [
+    { name: 'Кинопоиск HD', url: `https://www.kinopoisk.ru/index.php?kp_query=${query}` },
+    { name: 'Okko',         url: `https://okko.tv/search#${query}` },
+    { name: 'Иви',          url: `https://www.ivi.ru/search/?q=${query}` },
+  ].forEach(({ name, url }) => {
+    const a = document.createElement('a');
+    a.className = 'watch-link-btn';
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.innerHTML = `<span class="watch-link-icon">▶</span> ${escHtml(name)}`;
+    a.addEventListener('click', e => {
+      if (IS_TG) { e.preventDefault(); TG.openLink(url); }
+      if (IS_TV) { e.preventDefault(); window.TVBridge?.openUrl(url); }
+    });
+    watchLinks.appendChild(a);
+  });
 
   const { data: links } = await sb
     .from('watchability')
